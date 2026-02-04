@@ -1,0 +1,36 @@
+\documentclass{article}
+
+% Required packages
+\usepackage{booktabs}    % For \toprule, \midrule, \bottomrule
+\usepackage{multirow}    % For \multirow
+\usepackage{graphicx}    % For figures and \resizebox
+\usepackage[margin=1in]{geometry}  % Adjust margins
+
+\begin{document}
+
+% ============================================================
+% Table: Benchmark Results
+% ============================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Benchmark Results on Mathematical Reasoning Tasks}
+\label{tab:benchmark_results}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l|cc|cc|cc|cc}
+\toprule
+\multirow{2}{*}{\textbf{Model}} & \multicolumn{2}{c|}{\textbf{GSM8K}} & \multicolumn{2}{c|}{\textbf{MATH}} & \multicolumn{2}{c|}{\textbf{MMLU}} & \multicolumn{2}{c}{\textbf{AIME 2025}} \\
+& Pass@1 & Pass@5 & Pass@1 & Pass@5 & Pass@1 & Pass@5 & Pass@1 & Pass@5 \\
+\midrule
+Qwen2.5-7B (Base) & 29.0 & 75.5 & 36.5 & 59.0 & 33.5 & 56.5 & 0.0 & 3.3 \\
+Qwen2.5-7B-SFT & 27.0 & 80.5 & 19.5 & 27.5 & 62.0 & 66.5 & 0.0 & 0.0 \\
+Qwen2.5-7B-SFT-GRPO & 51.5 & 92.5 & 18.0 & 27.5 & 62.5 & 65.5 & 0.0 & 3.3 \\
+\bottomrule
+\end{tabular}%
+}
+
+\vspace{2mm}
+\footnotesize{Results are reported as percentages. Pass@k measures the probability of finding a correct solution within k attempts. Evaluations conducted on 200 samples (GSM8K, MATH, MMLU) and 30 samples (AIME 2025).}
+\end{table}
+
+\end{document}

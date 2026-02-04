@@ -1,0 +1,1423 @@
+\documentclass[12pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{times}
+\usepackage{hyperref}
+\usepackage{amsmath, amssymb}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{float}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  frame=single,
+  breaklines=true,
+  breakatwhitespace=true,
+  columns=fullflexible,
+  keepspaces=true,
+  tabsize=2
+}
+
+%Formatting Setting
+\onehalfspacing
+\renewcommand{\rmdefault}{ptm}
+\newcommand{\sixteenpt}{\fontsize{16pt}{19.2pt}\selectfont}
+\newcommand{\fourteenpt}{\fontsize{14pt}{16.8pt}\selectfont}
+\newcommand{\tenpt}{\fontsize{10pt}{12pt}\selectfont}
+\newcommand{\elevenpt}{\fontsize{11pt}{13pt}\selectfont}
+\newcommand{\flag}[1]{\texttt{#1}}
+\newcommand{\code}[1]{\colorbox{gray!15}{\texttt{#1}}}
+
+
+% 章首頁兩行樣式
+\titleformat{\chapter}[hang]
+  {\normalfont\sixteenpt\bfseries}
+  {\thechapter}
+  {1em}   % 章號跟標題之間距離（可改 0.8em / 1.2em）
+  {}
+
+% 控制章標題上下距離：{left}{before}{after}
+\titlespacing*{\chapter}{0pt}{0pt}{1.0em}
+
+
+\usepackage{fancyhdr}
+\setlength{\headheight}{14.5pt}
+\addtolength{\topmargin}{-2.5pt}
+
+\pagestyle{fancy}
+\fancyhf{} % 清空預設
+% 讓 \leftmark 只顯示章標題（Introduction）
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}} 
+% 左上：Chapter 1. Introduction（斜體）
+\fancyhead[L]{\itshape \thechapter.\ \leftmark}
+% 右上：頁碼
+\fancyhead[R]{\thepage}
+% 頁首底線
+\renewcommand{\headrulewidth}{0.4pt}
+
+%First Page
+
+\title{The Title of the Thesis Here}
+\author{Student's Name}
+\date{Month 1, 200X}
+
+\begin{document}
+
+
+\thispagestyle{empty}
+
+\vspace*{0.8cm} 
+
+
+{\centering
+    {\sixteenpt\textbf{Santa Clara University}}\\[0.5cm]
+    {\normalsize Department of Computer Science and Engineering}\\
+}
+
+
+\begin{flushright}
+    Date: February 1, 2026
+\end{flushright}
+
+{\centering
+    {\tenpt I HEREBY RECOMMEND THAT THE THESIS PREPARED UNDER MY SUPERVISION BY}\\[1cm]
+    
+    {\textbf{JI DUNG LO}}\\[0.25cm]
+    
+    {\elevenpt ENTITLED}\\[1cm]
+    
+    {\sixteenpt \textbf{Enhance LLM Math Reasoning with Reinforcement Learning}}\\[1cm]
+    
+    {\tenpt BE ACCEPTED IN PARTIAL FULFILLMENT OF THE REQUIREMENTS FOR THE DEGREE}\\[0.5cm]
+    
+    {\tenpt OF}\\[0.5cm]
+    
+    {\textbf{DOCTOR OF PHILOSOPHY IN COMPUTER ENGINEERING}}\\[2cm]
+}
+
+% Signature Columns
+\begin{center}
+    \begin{minipage}[t]{0.45\textwidth}
+        \rule{2.5in}{0.4pt}\\[-0.1cm]
+        Thesis Advisor\\[1cm]  
+        \rule{2.5in}{0.4pt}\\[-0.1cm]
+        Chairman of Department
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.45\textwidth}
+        \rule{2.5in}{0.4pt}\\[-0.1cm]
+        Thesis Reader\\[1cm]
+        \rule{2.5in}{0.4pt}\\[-0.1cm]
+        Thesis Reader\\[1cm]
+        \rule{2.5in}{0.4pt}\\[-0.1cm]
+        Thesis Reader\\[1cm]
+        \rule{2.5in}{0.4pt}\\[-0.1cm]
+        Thesis Reader
+    \end{minipage}
+\end{center}
+
+
+
+
+
+% Second Page
+% Title Page
+\clearpage
+\thispagestyle{plain}
+\setcounter{page}{2}
+\pagenumbering{roman}
+
+\begin{center}
+    \vspace*{1 in}
+    {\sixteenpt\textbf{Enhance LLM Math Reasoning with Reinforcement Learning}}\\[1cm]
+    
+    By\\[1cm]
+    
+    \textbf{JI DUNG LO}\\[3cm]
+    
+    \textbf{Dissertation}\\[2cm]
+    
+    Submitted in Partial Fulfillment of the Requirements\\
+    for the Degree of Master of Science\\
+    in Computer Science and Engineering\\
+    in the School of Engineering at\\
+    Santa Clara University\hspace{3mm}2026\\[2cm]
+    
+    Santa Clara, California
+\end{center}
+
+
+% Thrid Page-Dedicated to
+\clearpage
+\thispagestyle{plain}
+\setcounter{page}{3}
+
+\begin{center}
+    \vspace*{1.5in}
+    {\fourteenpt\textit{Dedicated to}}
+\end{center}
+
+% Fourth Page-Acknoeledgements
+
+\clearpage
+
+\chapter*{Acknowledgments}
+\addcontentsline{toc}{chapter}{Acknowledgments}
+\thispagestyle{plain}
+{\tenpt
+I would first like to thank...
+}
+
+% Fifth page-Abstract
+\clearpage
+\thispagestyle{plain}
+\addcontentsline{toc}{chapter}{Abstract}
+
+\begin{center}
+    {\fourteenpt\textbf{Enhance LLM Math Reasoning with Reinforcement Learning}}\\[1cm]
+    
+    {JI DUNG LO}\\[1cm]
+    Department of Computer Science and Engineering\\
+    Santa Clara University\\
+    Santa Clara, California\\
+    2026\\[1.5cm]
+    
+    \textbf{ABSTRACT}
+    
+\end{center}
+
+\vspace{1cm}
+
+Large language models (LLMs) excel at many tasks but still struggle with complex mathematical reasoning. Previous work has shown that process supervision dramatically outperforms outcome supervision on competition-level math problem, yet collecting a large amount of human annotated data is costly. In our pipeline, we eliminate manual step annotations by fine‑tuning a base model on MetaMathQA, an augmented dataset derived from the training splits of GSM8K and MATH, and then applying Generative Reinforcement Policy Optimization (GRPO) on a mixture of MATH and GSM8K problems. To provide more granular feedback without human labor, we employ a lightweight model to automatically generate short “quiz” questions that probe key intermediate steps for each problem. These quizzes are verified to align with the original question context, and the model receives an additional reward based on its performance on them, alongside the step bonus and the final‑answer reward. This automated quiz mechanism allows us to capture intermediate reasoning quality while still avoiding any manually annotated chains of thought.
+
+Experiments show consistent improvements of approximately 22.5 percentage points on GSM8K compared to baselines, while keeping the training pipeline fully automated. We also observe that more complex reward engineering provides diminishing returns, suggesting that simple, well-aligned reward signals are sufficient to encourage improved reasoning behavior.
+
+%Table of contents start
+\clearpage
+
+\tableofcontents
+
+% Content Starts
+
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\chapter{Introduction}
+\section{Background}
+Large language models (LLMs) have achieved strong performance on many tasks, yet robust multi-step reasoning remains challenging, especially for complex mathematical problems. A key factor shaping the reasoning behavior of a model is its training objective. When training optimizes only final-answer correctness, models are incentivized to use shortcuts or shallow pattern matching, often producing correct answers without reliable reasoning steps. This limitation motivates approaches that go beyond outcome supervision and consider how intermediate reasoning steps are formed.
+
+Process-level rewards provide a way to guide reasoning at a finer granularity. By assigning feedback to intermediate steps, the training objective can encourage logically coherent reasoning and make it possible to strengthen the individual steps that contribute to the final outcome. However, human-annotated step-level supervision is expensive and difficult to scale. This motivates automated alternatives that provide step-level feedback without manual annotation, enabling reinforcement learning methods to improve reasoning quality and final performance in a scalable manner.
+
+\section{Large Language Model and Mathematical Reasoning}
+Large language models (LLMs) have achieved impressive performance across a wide range of natural language tasks, largely due to large-scale pretraining on diverse textual corpora. Through exposure to massive amounts of data, these models acquire strong abilities in pattern recognition, factual recall, and linguistic fluency. They are particularly effective at capturing surface-level regularities in language and generating coherent responses that align with human-written text.
+
+However, mathematical reasoning poses a fundamentally different set of challenges. Unlike many language understanding tasks, mathematical problem solving requires precise, multi-step logical inference, where each intermediate step must be both locally correct and globally consistent with the overall solution. Tasks such as solving algebraic equations, reasoning through word problems, or constructing geometric arguments demand the correct application of definitions, maintenance of symbolic relationships, and accurate numerical manipulation over extended reasoning horizons.
+
+A defining characteristic of mathematical reasoning is its error sensitivity. Small mistakes introduced at early stages—such as an incorrect assumption, a sign error, or a misapplied formula—can propagate through subsequent steps and invalidate the entire solution. As a result, partial correctness or fluent explanation alone is insufficient; successful mathematical reasoning requires sustained correctness across all intermediate steps. This property stands in contrast to many natural language tasks, where local inconsistencies may not significantly affect overall output quality.
+
+Empirical results reflect this difficulty. Even strong pretrained or instruction-tuned models fine-tuned on mathematical datasets such as MATH typically achieve only 3–6\% pass rates under strict evaluation protocols. These low pass rates persist despite increasing model scale, suggesting that improvements in language modeling capacity do not automatically translate into robust mathematical reasoning ability. This gap highlights a mismatch between the inductive biases of current LLM architectures and the structural requirements of mathematical problem solving.
+
+To mitigate these limitations, prior work has explored a variety of approaches that operate primarily at the inference or supervised learning level. Prompting strategies, such as chain-of-thought prompting, encourage models to explicitly generate intermediate reasoning steps, often improving accuracy by making latent reasoning processes more explicit. Related techniques, including self-consistency sampling and answer verification, attempt to improve reliability by aggregating or filtering multiple candidate solutions.
+
+Another line of work focuses on supervised fine-tuning using datasets that contain step-by-step solutions. By training models to imitate structured reasoning traces, these approaches aim to internalize common reasoning patterns and improve performance on downstream mathematical tasks. While effective to some extent, such methods depend heavily on the availability and quality of annotated reasoning data, and they may encourage models to mimic specific solution styles rather than develop generalizable reasoning skills.
+
+Overall, existing methods demonstrate that explicitly modeling intermediate reasoning steps can improve mathematical performance, but they also expose fundamental limitations in how current language models acquire and apply reasoning abilities. These observations motivate further investigation into training paradigms that better align model optimization with the structural demands of multi-step mathematical reasoning.
+
+\section{Research Motivation and Vision}
+Large Language Models (LLMs) have demonstrated remarkable capabilities across a wide range of natural language tasks; however, their performance on complex, multi-step mathematical reasoning remains limited. A central reason for this limitation lies in the dominant training paradigm used for post-training optimization: reinforcement learning with outcome-only rewards, where the model receives feedback solely based on the correctness of the final answer.
+
+While outcome-based reinforcement learning is simple and scalable, it suffers from a fundamental drawback in the context of reasoning tasks: the reward signal is extremely sparse. For a problem that requires dozens or even hundreds of reasoning tokens, the model receives a single scalar reward only at the end of generation. This creates a severe credit assignment problem, where it becomes difficult for the optimization process to identify which intermediate reasoning steps were correct, which were flawed, and which were irrelevant. As a result, models may converge to brittle strategies such as shortcut reasoning, pattern memorization, or superficial heuristics that succeed on training distributions but fail to generalize.
+
+This sparsity issue becomes especially pronounced in mathematical reasoning benchmarks such as MATH and AIME, where a single early mistake can invalidate the entire solution. Under outcome-only rewards, a partially correct reasoning trajectory that demonstrates strong intermediate understanding but arrives at a wrong final answer receives the same penalty as a completely incoherent solution. Consequently, reinforcement learning fails to distinguish near-miss reasoning from random guessing, slowing learning and destabilizing optimization.
+
+Process supervision has been shown to alleviate this issue by providing step-level feedback, significantly improving reasoning performance. However, process supervision typically relies on human-annotated chains of thought, which are expensive to produce, difficult to standardize, and challenging to scale across domains. Moreover, manually annotated reasoning traces introduce stylistic biases and constrain the diversity of reasoning strategies that models can explore.
+
+The core motivation of this thesis is to bridge the gap between sparse outcome-based reinforcement learning and costly human process supervision. We aim to design a reinforcement learning framework that increases reward density and improves credit assignment without relying on any human-annotated intermediate reasoning steps.
+
+Our key insight is that intermediate reasoning quality can be indirectly but reliably evaluated through automatically generated intermediate quizzes that probe critical checkpoints in the reasoning trajectory. Instead of asking the model to reproduce a specific chain of thought, we ask whether its partial reasoning supports answering well-defined quizzes derived from the original problem. By combining these quiz-based rewards with final-answer evaluation and lightweight step-structure incentives, we transform reasoning optimization from a sparse, outcome-only learning problem into a denser, step-aware reinforcement learning task.
+
+The long-term vision of this research is to develop scalable and fully automated post-training strategies for reasoning-oriented LLMs that:
+\begin{enumerate}
+    \item Mitigate the sparse reward problem inherent in outcome-only reinforcement learning.
+    \item Provide meaningful intermediate supervision without human annotation.
+    \item Improve both final answer accuracy and the robustness of intermediate reasoning.
+    \item Remain practical under realistic computational and hardware constraints.
+\end{enumerate}
+By reframing reasoning optimization as a reward-density and credit-assignment problem, this thesis positions reinforcement learning not merely as a performance booster, but as a principled mechanism for shaping how large language models reason.
+
+An additional source of inspiration for this work comes from a well-established principle in human education and assessment. In most academic settings, students are not evaluated solely based on a single final examination. Instead, learning progress is monitored through a sequence of formative assessments, such as quizzes, homework assignments, and midterm exams, before culminating in a final comprehensive evaluation. These intermediate assessments serve two critical purposes: they provide early feedback to both students and instructors, and they enable timely correction of misunderstandings before they compound into larger conceptual failures.
+
+This educational paradigm closely mirrors the challenges faced by outcome-only reinforcement learning for long-horizon reasoning tasks. Evaluating a student only by a final exam is analogous to providing a language model with a single terminal reward based on final-answer correctness. In both cases, the feedback signal is sparse, delayed, and insufficient for identifying which intermediate steps contributed to success or failure. As a result, neither the student nor the model receives actionable guidance on how to improve the underlying reasoning process.
+
+Motivated by this analogy, we view intermediate quizzes as a form of automated formative assessment for large language models. Rather than supervising the exact reasoning steps directly, quizzes probe whether partial reasoning states support correct intermediate conclusions, in the same way that quizzes and midterms test a student’s partial understanding of course material. This approach increases reward density, improves credit assignment, and enables reinforcement learning to distinguish between near-miss reasoning and fundamentally flawed trajectories, all without relying on human-annotated chains of thought.
+
+From this perspective, the proposed quiz-augmented reinforcement learning framework can be interpreted as translating a proven educational evaluation strategy into a machine learning setting. By combining frequent, lightweight intermediate assessments with a final exam reward, the training objective encourages gradual, structured improvement in reasoning behavior rather than brittle optimization toward final outcomes alone.
+
+
+\section{Challenges and Limitations}
+Despite the promise of reinforcement learning for improving reasoning in large language models, several challenges and practical limitations must be acknowledged. These challenges arise from methodological constraints, dataset properties, reward design complexity, and—critically—hardware and computational limitations.
+
+\subsection{Limitations of Supervised Methods}
+Supervised fine-tuning (SFT) on question–answer pairs remains the most common approach for adapting LLMs to downstream tasks. While SFT improves surface-level accuracy, it provides no explicit signal that distinguishes correct reasoning from accidental correctness. Models trained purely with supervised objectives often learn to mimic solution formats or exploit dataset regularities, rather than internalizing robust reasoning strategies.
+
+Process supervision partially addresses this issue by training models on annotated intermediate steps. However, collecting high-quality, human-labeled reasoning traces is costly, time-consuming, and difficult to scale. Furthermore, annotated chains of thought may reflect annotator-specific styles or biases, limiting the diversity of reasoning strategies the model can learn. These drawbacks motivate the search for automated alternatives that preserve the benefits of process supervision without incurring its costs.
+
+\subsection{Dataset Difficulty and Quality Issues}
+The MATH dataset provides competition-level mathematical problems with step-by-step solutions; however, in our experiments we use only the training split, consisting of 7,500 problems, due to the difficulty and evaluation protocol of the benchmark. Its high complexity still results in low baseline pass rates, making learning challenging even within the training set. In contrast, GSM8K contains 7,473 grade-school math word problems that typically require 2 to 8 reasoning steps and exhibit lower intrinsic difficulty. Mixing datasets with such differing complexity levels introduces an imbalance: over-emphasizing easier GSM8K examples may encourage superficial reasoning strategies, while placing too much weight on MATH early in training can slow optimization and destabilize learning.
+
+\subsection{Misalignment between Quizzes and Real Problem}
+Beyond dataset-level difficulty, the difficulty and alignment of the generated quizzes also play a critical role. If intermediate quizzes are not well aligned with the underlying problem difficulty or reasoning requirements, the model may receive reward signals that are irrelevant to solving the original task, leading to spurious or misdirected learning. 
+
+Conversely, if the quizzes simply restate or closely duplicate the original problem, the policy can exploit this structure by focusing only on producing the correct final answer, since success on the final answer automatically guarantees high quiz rewards. In this case, the quiz signal fails to provide additional supervision beyond outcome correctness and does not encourage meaningful step-by-step reasoning.
+
+\subsection{Complexity of Reward Engineering}
+Designing reinforcement learning rewards for reasoning is inherently challenging. The reward function must simultaneously encourage correct final answers, logically complete intermediate reasoning, and concise solution structure, while remaining stable under policy optimization. In practice, poorly designed rewards are often vulnerable to reward hacking, where the policy maximizes reward through superficial or trivial token sequences that satisfy surface-level criteria without performing genuine reasoning. 
+
+Prior approaches such as Math-Shepherd address this issue by training process reward models, but these models can overfit to specific linguistic or structural patterns and introduce additional optimization complexity. In contrast, we aim to design a simple yet effective reward signal that is fully automatic, robust to exploitation under reinforcement learning, and tunable without manual inspection or human annotation.
+
+\subsection{Hardware and Computational Constraints}
+A significant practical limitation of this work is computational capacity. All experiments are conducted using a single NVIDIA A100 SXM 80GB VRAMS GPU, which imposes strict constraints on model size, training strategy, and dataset scale.
+
+Under this hardware setting, full-parameter fine-tuning of large language models is infeasible, both due to memory limitations and prohibitive training cost. As a result, all supervised fine-tuning and reinforcement learning experiments rely on parameter-efficient methods, specifically Low-Rank Adaptation (LoRA). While LoRA significantly reduces memory usage, it also constrains the expressiveness of model updates and may limit the upper bound of achievable performance.
+
+Similarly, it is computationally impractical to train on the full available dataset with long generation lengths, large batch sizes, or extensive rollouts. Attempting to do so would lead to out-of-memory (OOM) errors or excessive training cost. Consequently, dataset filtering, reduced batch sizes, limited group sampling, and conservative rollout configurations are necessary trade-offs.
+
+Rather than viewing these constraints purely as drawbacks, this thesis treats them as design constraints that reflect realistic research and deployment conditions. The proposed framework is intentionally evaluated under limited compute to demonstrate that meaningful reasoning improvements are achievable without large-scale infrastructure, making the approach more accessible and reproducible for academic and resource-constrained settings.
+
+\subsection{Thesis Objectives}
+
+To address the challenges of scalable and reliable step-by-step reasoning in large language models,
+this thesis seeks to:
+
+\begin{enumerate}
+    \item Develop a reinforcement learning training pipeline that improves mathematical reasoning
+    in large language models without relying on human-annotated reasoning steps, while remaining
+    fully automated and scalable across different model sizes.
+
+    \item Investigate the complementary roles of supervised fine-tuning and RL post-training for
+    mathematical reasoning through controlled ablations (SFT-only, RL-only, and SFT+RL),
+    evaluating whether post-training alone improves reasoning performance and analyzing how
+    its effects differ qualitatively and quantitatively from supervised learning.
+
+    \item Design a simplified and robust reward function that integrates step-level bonuses,
+    final-answer rewards, and automatically generated quiz rewards, while remaining resistant
+    to reward hacking and stable under policy optimization.
+
+    \item Identify and reinforce weak reasoning segments by estimating chunk-level saliency from
+    repeated quiz and exam feedback, selectively cherry-picking low-contribution chunks, and
+    amplifying their influence during policy optimization to improve long-horizon reasoning.
+
+    \item Evaluate the resulting models on MATH, GSM8K, MMLU, and AIME 2025 using standard
+    reasoning benchmarks, and compare their performance against SFT baselines and existing
+    reasoning-oriented methods.
+\end{enumerate}
+
+
+\subsection{Expected Outcomes and Significance}
+
+We expect the proposed framework to yield measurable and consistent improvements in mathematical
+reasoning performance across multiple benchmarks, including GSM8K, MATH, MMLU, and AIME~2025.
+Beyond improvements in final-answer accuracy, the resulting models are expected to produce
+solutions that exhibit more structured, coherent, and interpretable step-by-step reasoning compared
+to supervised fine-tuning (SFT) baselines. In particular, we anticipate improvements in reasoning
+robustness for problems that require long-horizon inference, where early errors can otherwise
+propagate and invalidate the final solution.
+
+By eliminating the need for human-annotated reasoning traces, the proposed training pipeline remains
+fully automated and scalable. All intermediate supervision signals are generated programmatically,
+allowing the method to be applied to new domains and datasets without additional annotation cost.
+This property makes the approach particularly suitable for large-scale or resource-constrained
+research settings, where collecting high-quality process supervision is impractical.
+
+Beyond performance gains, this work contributes conceptual insight into how reinforcement
+learning can be used to shape intermediate reasoning behavior in large language models. The results
+are expected to demonstrate that targeted, step-level reward signals, such as automatically generated
+quizzes combined with final-answer evaluation, can partially bridge the gap between outcome
+supervision and process supervision. This finding suggests that effective reasoning supervision does
+not require direct access to or imitation of human chains of thought, but can instead be achieved
+through indirect, task-aligned evaluation of intermediate reasoning states.
+
+From a broader perspective, this thesis highlights a practical and principled path toward training
+reasoning-oriented LLMs using simple and scalable reinforcement learning signals. By focusing on
+reward density, credit assignment, and selective reinforcement of weak reasoning segments, the
+proposed approach provides a middle ground between expressive but expensive process supervision
+and scalable but sparse outcome-only optimization. We expect these insights to inform future research
+on reinforcement learning for long-horizon reasoning tasks, including applications beyond
+mathematics such as scientific reasoning, planning, and agent-based decision making.
+
+
+\chapter{Related Work}
+\section{Outcome vs. Process Supervision}
+Most early approaches to mathematical reasoning in large language models rely on outcome supervision, where training optimizes only the correctness of the final answer. While simple and scalable, this paradigm provides no direct feedback on intermediate reasoning steps, allowing models to rely on shallow heuristics or spurious patterns that do not generalize well to harder problems.
+
+The work “Let’s Verify Step by Step” introduces process supervision, which evaluates and rewards intermediate reasoning steps rather than only final outcomes. By training a verifier to assess step-by-step reasoning traces, the authors show that guiding the reasoning trajectory itself leads to substantial performance gains on challenging benchmarks such as MATH. This demonstrates that training objectives strongly influence reasoning behavior, and that step-level feedback can significantly improve long-horizon reasoning.
+
+Despite its effectiveness, process supervision depends on human-annotated reasoning traces, which are costly to collect and difficult to scale across domains. Annotation quality may also introduce stylistic or cognitive biases. These limitations motivate the search for automated step-level supervision mechanisms that preserve the benefits of process supervision while maintaining the scalability of outcome-based training. This thesis builds on this insight by exploring reinforcement learning with automated intermediate feedback instead of human-labeled reasoning steps.
+
+\section{Pure Reinforcement Learning Approaches}
+While process supervision augments outcome supervision with explicit step-level signals, an alternative line of work investigates whether reinforcement learning alone can induce reasoning behaviors without any supervised fine-tuning or annotated chains of thought. DeepSeek-R1 represents a prominent example of this direction.
+
+DeepSeek-R1 demonstrates that large-scale reinforcement learning from outcome-based rewards can lead to the emergence of complex reasoning behaviors, including multi-step planning, self-verification, and error correction. Notably, the model is trained without supervised fine-tuning on reasoning datasets or explicit process supervision. Instead, it relies on carefully designed reward signals and large-scale policy optimization to shape behavior.
+
+One of the most striking findings of DeepSeek-R1 is that reasoning structures can emerge implicitly under sufficient optimization pressure, even when the reward is defined primarily on final outcomes. This challenges the assumption that explicit process supervision is strictly necessary for reasoning. The work highlights the power of reinforcement learning as a general-purpose mechanism for inducing structured behaviors in LLMs.
+
+However, pure RL approaches come with important trade-offs. They typically require large-scale models, extensive compute, and massive amounts of interaction data to achieve stable and reliable reasoning. Training instability, reward hacking, and poor sample efficiency remain persistent challenges. Furthermore, the emergent reasoning behaviors are difficult to control or target, as the reward signal does not explicitly guide intermediate steps.
+
+In contrast to DeepSeek-R1, this thesis adopts a hybrid approach: supervised fine-tuning provides a strong initialization, while reinforcement learning refines reasoning behavior through structured but automated step-level signals. Rather than relying on emergent reasoning alone, we aim to explicitly guide reasoning at the step level without resorting to human annotation or large-scale reward models.
+
+\section{Math-Shepherd: Verify and Reinforce LLMs Step-by-Step without Human Annotations}
+Math-Shepherd is one of the most closely related works to this thesis, as it proposes a framework for step-by-step reasoning supervision without human-annotated chains of thought. Instead of relying on manual annotations, Math-Shepherd combines automatic verification with Monte Carlo Tree Search (MCTS) to construct step-level training signals for reinforcement learning.
+
+Math-Shepherd formulates reasoning as a tree-structured search problem, where each node corresponds to a partial reasoning state. Using MCTS, the method explores multiple reasoning trajectories by iteratively expanding candidate steps, evaluating them with a verifier, and propagating step-level values back through the search tree. This process produces a process-level reward signal that reflects the quality of intermediate reasoning steps rather than only final outcomes. The resulting signals are then used to reinforce the policy, enabling more precise credit assignment across reasoning steps.
+
+A key contribution of Math-Shepherd is demonstrating that verification-guided search combined with reinforcement learning can approximate the benefits of human process supervision. By leveraging MCTS, the method explicitly reasons over alternative intermediate steps and systematically evaluates their contribution to the final answer. Empirical results show significant improvements on mathematical reasoning benchmarks, confirming that automated step-level supervision can effectively replace human-annotated reasoning traces.
+
+However, this approach introduces substantial computational and architectural complexity. MCTS requires repeated rollouts, tree maintenance, and verifier evaluations, making training expensive and sensitive to search hyperparameters. In addition, Math-Shepherd trains a process reward model (PRM) using supervision derived from automated verification and MCTS-based search, which may still overfit to specific reasoning patterns or verification-induced biases. These factors complicate tuning and may limit scalability, especially for smaller models or resource-constrained settings.
+
+In contrast, this thesis explores a simpler reinforcement learning framework that avoids explicit tree search and separate reward model training. Rather than performing MCTS over reasoning trajectories, we generate lightweight intermediate quizzes to probe partial reasoning states and selectively reinforce weak reasoning segments. This design preserves the core insight of Math-Shepherd, which is step-level feedback is critical for reasoning, while prioritizing simplicity, robustness, and ease of integration into standard policy optimization pipelines.
+
+\section{Reinforcement Learning for Reasoning in Small LLMs: What Works and What Doesn’t}
+Recent work on reinforcement learning for reasoning has largely focused on large-scale models, often obscuring the practical limitations faced by smaller LLMs. The study “Reinforcement Learning for Reasoning in Small LLMs: What Works and What Doesn’t” systematically investigates which reinforcement learning techniques are effective under tight compute and data constraints.
+
+This work evaluates a range of RL strategies on relatively small models, demonstrating that many techniques successful at scale fail to transfer directly. In particular, complex reward models, dense supervision, and aggressive optimization often lead to instability or negligible gains. Instead, the authors find that simple reward designs, careful curriculum selection, and selective reinforcement are critical for improving reasoning performance in smaller models.
+
+This study showed us that reward simplicity and alignment matter more than expressiveness when resources are limited. Overly complex reward functions increase the risk of reward hacking and optimization instability, while simpler rewards and properly aligned can still produce meaningful reasoning improvements.
+
+This finding strongly aligns with the design philosophy of this thesis. By using lightweight step bonuses, final-answer rewards, and automatically generated quiz rewards, we prioritize robustness and scalability over reward model complexity. Additionally, our strategy of cherry-picking weak reasoning chunks echoes the study’s emphasis on targeted reinforcement as a practical mechanism for improving reasoning under constrained settings.
+
+\section{R1-Searcher: Incentivizing the Search Capability in LLMs via Reinforcement Learning}
+R1-Searcher investigates how reinforcement learning can be used to explicitly incentivize search behaviors in large language models. Rather than focusing solely on final answer correctness, the work emphasizes the importance of intermediate exploration steps, showing that structured search policies can emerge when models are rewarded for effective information gathering and reasoning progression.
+
+This work is closely related to our thesis in its recognition that reasoning is a sequential decision-making process, where intermediate actions critically influence final outcomes. However, R1-Searcher primarily targets retrieval and search efficiency, whereas our work focuses on improving internal reasoning quality through quiz-based intermediate evaluation. Both approaches highlight the importance of shaping intermediate behaviors via reinforcement learning rather than relying on outcome-only rewards.
+
+\section{ReARTeR: Retrieval-Augmented Reasoning with Trustworthy Process Rewarding}
+ReARTeR proposes a retrieval-augmented reasoning framework that integrates process-level rewards to ensure trustworthy reasoning paths. By combining external retrieval with step-level reward signals, the method aims to align reasoning processes with verifiable evidence.
+
+Compared to ReARTeR, our approach does not rely on external retrieval systems or explicit process reward models. Instead, we focus on self-contained reasoning, where intermediate quizzes probe internal consistency rather than factual grounding. Nonetheless, both works share the core insight that process-level feedback is essential for reliable reasoning, and that outcome-only supervision is insufficient for complex tasks.
+
+\section{Agent Lightning: Training General-Purpose Agents with Reinforcement Learning}
+Agent Lightning presents a general framework for training AI agents using reinforcement learning under a Partially Observable Markov Decision Process (POMDP) formulation. The work emphasizes modular reward design, long-horizon optimization, and scalability across tasks.
+
+This perspective directly informs the theoretical framing of our work. By treating reasoning as a sequential decision process with partial observability, Agent Lightning provides a conceptual foundation for our quiz–exam reward structure and chunk-level saliency analysis. Our work can be viewed as a specialization of this agent-centric view, where the environment is a reasoning task and rewards are derived from intermediate quizzes and final answer evaluation.
+
+\section{Datasets and Data Augmentation}
+\subsection{Overview of MATH and GSM8K}
+MATH and GSM8K are two widely used benchmarks for evaluating mathematical reasoning in large language models, representing distinct difficulty regimes. The MATH dataset contains competition-level problems that require long-horizon, multi-step reasoning and precise symbolic manipulation, resulting in low baseline pass rates and making it a challenging test of deep reasoning ability. In contrast, GSM8K consists of grade-school word problems that typically require fewer reasoning steps and exhibit lower intrinsic difficulty, while still demanding accurate numerical reasoning and language understanding.
+
+Prior work has observed that mixing these datasets during training introduces curriculum trade-offs. Over-emphasizing GSM8K may encourage shallow or pattern-based strategies, whereas prioritizing MATH too early can hinder optimization and destabilize learning. These challenges motivate training strategies that can adapt to varying difficulty levels and provide guidance beyond final-answer supervision.
+
+\subsection{MetaMathQA Synthetic Dataset}
+MetaMathQA is a large-scale synthetic dataset constructed from the training splits of MATH and GSM8K, designed to improve supervised initialization for mathematical reasoning. By generating diverse solution formats and reasoning traces using language models, MetaMathQA expands data coverage without leaking test examples. Supervised fine-tuning on MetaMathQA has been shown to significantly improve downstream reasoning performance and stabilize subsequent reinforcement learning.
+
+However, MetaMathQA primarily provides outcome-level supervision and does not guarantee the correctness or usefulness of intermediate reasoning steps. As a result, models fine-tuned on MetaMathQA may still rely on surface-level reasoning patterns. In this thesis, MetaMathQA is used as a strong initialization, while reinforcement learning with automated step-level signals is employed to further refine reasoning behavior and address the limitations of synthetic supervision.
+
+\subsection{Summary}
+
+Prior work highlights a broad spectrum of approaches to training reasoning-capable large language
+models, ranging from outcome-only supervision to human-annotated process supervision and pure
+reinforcement learning. A common conclusion across these lines of work is that effective reasoning
+requires guidance beyond final-answer correctness alone. Methods that incorporate step-level
+feedback—whether through human annotations, automated verification, or search-based evaluation—
+consistently demonstrate stronger performance on long-horizon reasoning tasks.
+
+At the same time, existing approaches expose important trade-offs. Human-annotated process
+supervision offers strong empirical gains but suffers from limited scalability and high annotation
+costs. Pure reinforcement learning can induce emergent reasoning behaviors, yet typically demands
+substantial computational resources and large-scale optimization. Hybrid methods such as
+Math-Shepherd bridge part of this gap by introducing automated, verification-based rewards, but
+at the cost of significantly increased training and inference complexity due to MCTS-based reasoning
+exploration.
+
+Building on these insights, this thesis positions itself within the design space between expressive but
+expensive process supervision and scalable but sparse outcome-only optimization. Rather than
+relying on human annotations, heavy reward models, or large-scale search, we explore whether
+simple, automated, and hardware-feasible reinforcement learning signals can approximate the
+benefits of process supervision. By focusing on step-level credit assignment, selective reinforcement
+of weak reasoning segments, and robust reward design, this work aims to provide a practical and
+scalable path toward improving long-horizon reasoning in large language models. The proposed
+approach and its empirical evaluation are detailed in the following methodology, experiments, and
+results.
+
+
+\chapter{Methodology}
+This section presents the training pipeline used to improve step-by-step mathematical reasoning in large language models. We first apply Low-Rank Adaptation (LoRA) with supervised fine-tuning on a synthetic mathematics dataset (MetaMathQA) to obtain a strong initialization. After merging the LoRA parameters into the base model, reinforcement learning is applied to further refine reasoning behavior using automatically computed rewards. The proposed methodology emphasizes sequence-level optimization, scalable reward design, and targeted reinforcement of reasoning quality without relying on human-annotated intermediate steps.
+
+\section{Parameter-Efficient Adaptation with LoRA}
+To efficiently adapt large language models for mathematical reasoning, we employ Low-Rank Adaptation (LoRA) during the supervised fine-tuning stage. LoRA injects trainable low-rank matrices into selected linear layers while keeping the base model parameters frozen, significantly reducing memory usage and training cost.
+
+We apply LoRA to both attention and feed-forward submodules, including:
+\[
+\{ \texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj},
+   \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj} \}.
+\]
+
+Each adapted weight matrix $W$ is reparameterized as:
+\begin{align}
+W' &= W + \Delta W, \\
+\Delta W &= AB,
+\end{align}
+
+where $A \in \mathbb{R}^{d \times r}$ and $B \in \mathbb{R}^{r \times k}$ and rank $r$ denotes the low-rank dimension of the adaptation. In our experiments, we set the LoRA rank to $r=16$, the scaling factor to $\alpha=64$, and the dropout probability to $0.05$. This design allows the model to acquire task-specific reasoning behaviors during supervised fine-tuning while preserving the general knowledge encoded in the pretrained backbone.
+
+\section{Model Initialization and Supervised Fine-Tuning}
+We initialize our models (Qwen2.5-1.5B, Qwen2.5-3B, and Qwen2.5-7B) using supervised fine-tuning (SFT) on MetaMathQA, a synthetic dataset containing step-by-step mathematical solutions.
+
+During SFT, only LoRA parameters are optimized, while the base model remains frozen. Training minimizes the standard cross-entropy loss over the entire generated sequence, encouraging the model to produce structured reasoning steps followed by a concise final answer.
+
+To improve training stability and hardware efficiency, we employ dynamic sequence padding with padding aligned to multiples of 8 and mask padded tokens using a label value of $-100$. We use a per-device batch size of 8 with gradient accumulation over 8 steps, resulting in an effective batch size of 64. The learning rate is set to $1 \times 10^{-4}$ with a warmup ratio of 0.05, and training is conducted for 3 epochs. All experiments are performed in \texttt{bfloat16} precision with gradient norm clipping at 1.0 to prevent instability.
+
+After SFT converges, the LoRA adapters are merged into the base model weights, yielding a single consolidated checkpoint. This merged model is then used as the initialization policy for subsequent reinforcement learning with GRPO.
+
+\section{Reinforcement Learning with Group Relative Policy Optimization}
+After merging LoRA weights into the base model, we apply reinforcement learning using Group Relative Policy Optimization (GRPO). At this stage, all model parameters are trainable, and optimization is performed via full-parameter tuning. Given a question $q$, GRPO samples a group of $G$ complete outputs:
+\begin{align}
+o_1, o_2, \ldots, o_G 
+&\sim \pi_{\theta_{\text{old}}}(\cdot \mid q).
+\end{align}
+
+Each output receives a scalar reward $r_i = R(q, o_i)$. 
+Instead of training a value function, GRPO computes group-relative advantages:
+\begin{align}
+A_i 
+&= \frac{r_i - \operatorname{mean}(r_1, \ldots, r_G)}
+        {\operatorname{std}(r_1, \ldots, r_G)}.
+\end{align}
+
+The policy is optimized by maximizing:
+\begin{align}
+J_{\text{GRPO}}(\theta)
+&= \mathbb{E}\!\left[
+q \sim P(Q),\;
+\{o_i\}_{i=1}^{G} \sim \pi_{\theta_{\text{old}}}(\cdot \mid q)
+\right] \nonumber \\
+&\quad \left[
+\frac{1}{G} \sum_{i=1}^{G}
+\min\Big(
+\rho_i(\theta) A_i,\;
+\operatorname{clip}\big(\rho_i(\theta), 1-\epsilon, 1+\epsilon\big) A_i
+\Big)
+\right]
+- \beta\, D_{\mathrm{KL}}\!\left(
+\pi_\theta \,\|\, \pi_{\text{ref}}
+\right).
+\end{align}
+
+where 
+\begin{align}
+\rho_i(\theta) = 
+\frac{\pi_\theta(o_i \mid q)}
+     {\pi_{\theta_{\text{old}}}(o_i \mid q)}
+\end{align}     
+is the importance sampling ratio, 
+$\epsilon$ is the clipping threshold, 
+and $\beta$ controls the strength of the KL regularization. This formulation encourages the model to prefer reasoning trajectories that perform better relative to alternatives generated for the same question.
+
+\section{Automatic Reward Design}
+
+To provide informative training signals for long-horizon reasoning without human-annotated traces,
+we design an reward function that decomposes feedback into three components:
+a step bonus, a final-answer exam reward, and an intermediate quiz reward.
+Figure~\ref{fig:reward_structure} summarizes the overall computation flow.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, trim=0 120 0 60, clip]{Image/RewardStructure.png}
+    \caption{Overview of the proposed automatic reward design.
+The total reward combines step bonus, exam reward, and a clipped quiz reward computed from intermediate quizzes on partial reasoning chunks.}
+    \label{fig:reward_structure}
+\end{figure}
+
+The total reward for an output $o$ is defined as:
+\begin{equation}
+R(q,o) = R_{\text{step}} + R_{\text{exam}} 
++ \lambda_{\text{quiz}} \cdot 
+\operatorname{clip}\!\left(R_{\text{quiz}}, -C, C\right).
+\end{equation}
+
+\begin{enumerate}
+  \item \textbf{Step bonus} rewards the presence of explicit reasoning steps.
+  \item \textbf{Exam reward} measures final-answer correctness using EM/F1 metrics.
+  \item \textbf{Quiz reward} evaluates intermediate reasoning by answering quizzes
+        based on partial solution chunks.
+\end{enumerate}
+
+All rewards are computed after the full reasoning trace is generated, and intermediate tokens receive zero reward.
+
+\section{Step Bonus}
+To discourage premature guessing and encourage explicit reasoning, we include a simple step-based bonus. Let $n_{\text{steps}}$ denote the number of extracted reasoning steps and $n_{\min}$ the minimum required number of steps. Given a maximum bonus $b$, the step reward is defined as:
+\begin{equation}
+r_{\text{step}} =
+\begin{cases}
+b, 
+& n_{\text{steps}} \ge n_{\min} 
+\quad \text{(binary mode)}, \\[6pt]
+
+b \cdot \min\!\left(1, \dfrac{n_{\text{steps}}}{n_{\min}}\right), 
+& \text{(ratio mode)}, \\[6pt]
+
+0, 
+& \text{otherwise}.
+\end{cases}
+\end{equation}
+
+\section{ Exam Reward with Thresholding}
+The exam reward focuses on the correctness of the final answer and serves as the
+dominant training signal. Let $p$ denote the predicted final answer and $G$ the
+set of ground-truth answers. We compute the token-level F1 score
+$F1(p, G) \in [0,1]$.
+
+Instead of using a binary decision rule, we adopt a clipped, normalized reward
+based on the F1 score, controlled by a threshold parameter $\tau_{\text{exam}}$:
+
+\begin{equation}
+r_{\text{exam}}
+= \max\!\left(
+0,\;
+\min\!\left(
+1,\;
+\frac{F1(p, G)}{\tau_{\text{exam}}}
+\right)
+\right).
+\end{equation}
+
+This formulation provides partial credit for partially correct answers while preventing excessively large rewards through clipping.
+
+When operating in exact-match-only mode, we prioritize strict answer correctness
+by assigning a full reward to exact matches, while still providing limited
+partial credit based on token-level overlap.
+
+\begin{equation}
+r_{\text{exam}} =
+\begin{cases}
+1.0, 
+& EM(p, G) \ge 1.0, \\[6pt]
+0.5 \cdot F1(p, G), 
+& \text{otherwise}.
+\end{cases}
+\end{equation}
+
+
+If the model fails to produce a valid final answer, we directly set
+$r_{\text{exam}} = -1$. This formulation enforces a sharp decision boundary and
+avoids ambiguous partial credit.
+
+\section{Quiz Reward with Thresholding}
+\label{sec:quiz-reward}
+To provide intermediate supervision without human annotations, we generate a set of short quiz questions targeting intermediate reasoning states. Each quiz is answered using a corresponding reasoning chunk, and its answer is evaluated against a gold answer.
+
+For quiz $j \in \{1, \ldots, N_Q\}$, let the quiz-level reward be
+\begin{equation}
+E_j =
+\begin{cases}
++1, & F1_j \ge \tau_{\text{quiz}}, \\[6pt]
+-1, & \text{otherwise}.
+\end{cases}
+\end{equation}
+
+The total quiz reward is defined as
+\begin{equation}
+r_{\text{quiz}}
+= \lambda_{\text{quiz}} \cdot
+\operatorname{clip}\!\left(
+\sum_{j=1}^{N_Q} E_j,\; -c,\; c
+\right),
+\end{equation}
+
+where $\lambda_{\text{quiz}}$ controls the overall weight of the quiz reward and
+$c$ prevents extreme gradients when many quizzes are answered correctly or
+incorrectly. If no quizzes are defined for a problem, we set $r_{\text{quiz}} = 0$. This quiz-based reward provides dense intermediate feedback while remaining fully automated, enabling step-level supervision without requiring any human-annotated reasoning traces.
+
+\section{Prompting and Quiz Generation}
+To ensure consistent and parse-able reasoning behavior, we use explicit, fully specified prompt templates for both (I) generating full solutions to the original question and (II) answering intermediate quizzes conditioned on partial reasoning chunks. All prompts are fixed throughout training and evaluation.
+
+\subsection{Prompt for Full Solution Generation}
+For answering the original question, the language model is instructed to first produce step-by-step reasoning and then output a single concise final answer in a strictly defined format. This structure enables reliable extraction of reasoning steps for step-based rewards and quiz alignment, as well as robust parsing of the final answer for exam evaluation. The exact prompt template used for solution generation is provided in Appendix~\ref{app:prompt}. This prompt enforces the following properties:
+\begin{enumerate}
+  \item Explicit step boundaries (e.g., ``Step~1'', ``Step~2'', \ldots).
+  \item A single, unambiguous final answer.
+  \item Strict separation between reasoning and answer.
+\end{enumerate}
+
+As a result, reasoning steps can be segmented into chunks for quiz evaluation,
+and final answers can be reliably scored using exact-match and F1 metrics.
+
+\subsection{Prompt for Quiz Answering on Partial Reasoning Chunks}
+To obtain step-level supervision without human annotations, we generate intermediate quizzes targeting critical reasoning checkpoints.
+
+The quiz generation process conditions on both the original problem and its known correct solution, ensuring that generated quizzes are grounded and answerable. The prompt used for answering a quiz based on a reasoning chunk is provided in Appendix~\ref{app:quiz-prompt}. This design ensures that:
+\begin{enumerate}
+  \item Answers are grounded in the provided reasoning chunk.
+  \item No additional reasoning or explanation is generated.
+  \item Output is directly comparable to the quiz's gold answer.
+\end{enumerate}
+
+The resulting quiz score is then converted into a threshold-based reward, as described in Section~3.7.
+
+\subsection{Prompt for Intermediate Quiz Generation}
+To obtain step-level supervision without human annotations, we generate
+intermediate quizzes targeting critical reasoning checkpoints.
+
+The quiz generation process conditions on both the original problem and its
+known correct solution, ensuring that generated quizzes are grounded and answerable. The exact prompt template used for quiz generation is provided in Appendix~\ref{app:quiz-generation-prompt}.
+
+This prompt enforces several constraints critical for reinforcement learning:
+\begin{enumerate}
+  \item quizzes are answerable with a short, unambiguous output,
+  \item questions target numerical or symbolic checkpoints rather than
+        meta-reasoning,
+  \item the JSON-only output enables automatic parsing and downstream evaluation.
+\end{enumerate}
+
+As a result, quizzes can be reliably used as intermediate supervision signals during training.
+
+\subsection{Prompt for Quiz–Question Alignment Verification}
+Automatically generated quizzes may occasionally drift away from the original problem or unintentionally restate the final objective.
+To mitigate this issue, we introduce an explicit alignment verification step, where a separate language model judges whether a quiz is appropriately aligned with the given question. The system prompt used for this verification is provided in Appendix~\ref{app:quiz-question-alignment}
+This verification stage serves two purposes:
+\begin{enumerate}
+    \item Filtering misaligned quizzes that are irrelevant or misleading with respect to the original problem.
+    \item Identifying final-goal restatements, which are labeled separately to prevent the model from exploiting trivial reward shortcuts (e.g., answering only the final result to score well on both exam and quizzes).
+\end{enumerate}
+
+Only quizzes deemed aligned and non-trivial are used to compute quiz-based rewards.
+
+\section{Saliency over Reasoning Chunks}
+Repeat the \emph{same} adversarial quizzes and the user exam $K$ times. Let $Q_{k,j}$ be the normalized quiz reward for chunk $j$ on run $k$, and $E_k$ the exam reward on run $k$. Define
+
+\medskip
+\noindent\textbf{Exam-weighted chunk saliency:}
+\begin{equation}
+s_j=\frac{1}{K}\sum_{k=1}^{K} Q_{k,j}\,E_k,\qquad
+\end{equation}
+
+\noindent\textbf{Clip positive map + normalize to a distribution:}
+\begin{equation}
+\tilde{s}_j=\max(0,s_j),\qquad
+w_j=\frac{\tilde{s}_j}{\sum_{i=1}^{J}\tilde{s}_i},
+\end{equation}
+where $w_j\in[0,1]$ and $\sum_j w_j=1$. (For step-level saliency, distribute $w_j$ evenly across steps in chunk $j$.)
+
+\paragraph{Example (Saliency Map).}
+We repeat the same exam $K=3$ times with fixed quizzes and ground truths.
+There are $J=3$ reasoning chunks. Each run produces quiz rewards $Q_{k,j}$
+and an exam reward $E_k$. Suppose
+\begin{equation}
+Q_{k,j} =
+\begin{bmatrix}
++0.6 & +0.2 & +0.9\\
++0.5 & -0.3 & +0.8\\
+-0.2 & -0.6 & +0.4
+\end{bmatrix},
+\qquad
+E = [ +1.0,\ +0.9,\ -0.5 ].
+\end{equation}
+Each row corresponds to a run ($k=1,2,3$) and each column to a chunk ($j=1,2,3$).
+
+\noindent\textbf{Step 1: Compute exam-weighted chunk saliency.}
+\begin{equation}
+s_j=\frac{1}{K}\sum_{k=1}^{K} Q_{k,j}E_k.
+\end{equation}
+Hence,
+\begin{align}
+s_1 &= \frac{1}{3}\bigl(0.6\times1.0 + 0.5\times0.9 + (-0.2)\times(-0.5)\bigr)=0.383,\\
+s_2 &= \frac{1}{3}\bigl(0.2\times1.0 + (-0.3)\times0.9 + (-0.6)\times(-0.5)\bigr)=0.077,\\
+s_3 &= \frac{1}{3}\bigl(0.9\times1.0 + 0.8\times0.9 + 0.4\times(-0.5)\bigr)=0.473.
+\end{align}
+
+\noindent\textbf{Step 2: Clip negatives and normalize.}
+\begin{equation}
+\tilde{s}_j=\max(0,s_j),\qquad
+w_j=\frac{\tilde{s}_j}{\sum_{i=1}^{J}\tilde{s}_i}.
+\end{equation}
+Thus,
+\begin{equation}
+\tilde{s} = [0.383,\ 0.077,\ 0.473],\qquad
+w = [0.410,\ 0.083,\ 0.507].
+\end{equation}
+
+\noindent\textbf{Interpretation.}
+Chunk 3 contributes $\approx 50\%$ of the exam success, chunk 1 contributes $\approx 41\%$,
+and chunk 2 only $\approx 8\%$, indicating that chunk 2 is the weakest part of the reasoning trace.
+
+
+\section{Targeting Weak Chunks with GRPO}
+
+Given the chunk-level saliency distribution $\{w_j\}_{j=1}^{J}$ defined in Section~3.8.5, we identify reasoning chunks that contribute little to final exam success and selectively reinforce them with GRPO.
+
+Unlike PPO, which operates on step-level advantages with an explicit value function, GRPO performs trajectory-level optimization by comparing multiple complete reasoning outputs within the same group. We therefore adapt the weak-chunk cherry-picking mechanism to reweight \emph{group-relative advantages} instead of per-step advantages.
+
+\subsection{Identifying weak chunks.}
+Let $\mathcal{W} \subseteq \{1,\dots,J\}$ denote the set of low-saliency chunks:
+\begin{equation}
+\mathcal{W} =
+\begin{cases}
+\arg\operatorname{bottom}_k \{ w_j \}, & \text{(lowest-$k$ chunks)}, \\
+\{ j \mid w_j \le \delta \}, & \text{(below threshold $\delta$)}.
+\end{cases}
+\end{equation}
+
+\subsection{GRPO group advantages.}
+For a given question $q$, GRPO samples a group of $G$ complete reasoning trajectories
+$\{o_1,\dots,o_G\} \sim \pi_{\theta_{\text{old}}}(\cdot \mid q)$.
+Each trajectory receives a scalar reward $r_i$, and the standard GRPO advantage is computed as
+\begin{equation}
+A_i =
+\frac{
+r_i - \operatorname{mean}(\{r_1,\dots,r_G\})
+}{
+\operatorname{std}(\{r_1,\dots,r_G\})
+}.
+\end{equation}
+
+\subsection{Weak-chunk-aware advantage scaling.}
+To emphasize trajectories that expose weak reasoning segments, we define a weak-chunk indicator:
+\begin{equation}
+m_j = \mathbb{1}\{ j \in \mathcal{W} \},
+\end{equation}
+
+and aggregate it at the trajectory level as
+\begin{equation}
+\bar m_i = \frac{1}{J} \sum_{j=1}^{J} m_{i,j}.
+\end{equation}
+
+We then define an adjusted advantage as
+\begin{equation}
+\hat A_i = (1 + \kappa \bar m_i) A_i,
+\end{equation}
+where $\kappa > 0$ is a focus coefficient. Trajectories that contain weak reasoning chunks therefore receive amplified gradient magnitudes, enabling targeted credit assignment.
+
+\subsection{GRPO objective with weak-chunk focus.}
+Let the importance ratio be
+\begin{equation}
+\rho_i(\theta) =
+\frac{\pi_\theta(o_i \mid q)}{\pi_{\theta_{\text{old}}}(o_i \mid q)}.
+\end{equation}
+The weak-chunk-aware GRPO objective is
+\begin{equation}
+\mathcal{L}_{\text{GRPO}}^{\text{focus}}
+=
+\mathbb{E}
+\left[
+\frac{1}{G}
+\sum_{i=1}^{G}
+\min
+\left(
+\rho_i(\theta)\hat A_i,
+\operatorname{clip}(\rho_i(\theta), 1-\epsilon, 1+\epsilon)\hat A_i
+\right)
+\right]
+-
+\beta D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\text{ref}}).
+\end{equation}
+
+\paragraph{Stopping criterion.}
+The stopping criterion operates at the level of chunk saliency estimation and is therefore independent of the GRPO. A chunk $j \in \mathcal{W}$ is removed from the weak set once its estimated contribution improves:
+\begin{equation}
+\Delta w_j = w^{\text{new}}_j - w^{\text{old}}_j \ge \eta
+\quad \text{or} \quad
+\Delta Q_j \ge \eta,
+\end{equation}
+where $Q_j$ denotes the normalized quiz reward associated with chunk $j$.
+
+\paragraph{Example.}
+Assume $T=6$ reasoning steps with chunk size $m=2$, resulting in $J=3$ chunks.
+The estimated saliency distribution is
+\[
+w = [0.22,\; 0.53,\; 0.00],
+\]
+so the weakest chunk is $\mathcal{W}=\{3\}$.
+
+For a GRPO group of $G=4$ trajectories, suppose the normalized group-relative advantages are
+\[
+A = [0.40,\; 0.30,\; 0.10,\; -0.10],
+\]
+and the weak-chunk indicators are
+\[
+\bar m = [0,\; 0,\; 1,\; 1].
+\]
+With $\kappa = 1.0$, the adjusted advantages become
+\[
+\hat A = [0.40,\; 0.30,\; 0.20,\; -0.20].
+\]
+
+Thus, trajectories that contain weak reasoning chunks receive stronger positive or negative gradients, accelerating improvement on deficient reasoning segments while preserving GRPO’s group-relative and clipped optimization structure.
+
+
+\chapter{Experiments and Results}
+
+This chapter presents the experimental setup and evaluation methodology used to assess the effectiveness of the proposed step-level reinforcement learning framework. We describe the datasets preprocessing, model configurations, training procedure, and evaluation metrics, followed by an analysis of experimental outcomes. Where final numerical results are not yet fixed, we report observations that are directly supported by logged training runs and clearly indicate where results remain under consolidation.
+
+\section{Experimental Setup}
+
+\subsection{Data Preparation and Quiz Quality Filtering}
+
+Supervised fine-tuning (SFT) is performed on MetaMathQA, a synthetic dataset derived from the training split of GSM8K and MATH. MetaMathQA provides diverse reasoning traces while avoiding test-set leakage, and serves as a strong initialization prior to reinforcement learning.
+
+Reinforcement learning is conducted on a combined training set consisting of GSM8K and MATH, with a total of 14,973 examples. For each problem, GPT-5-mini is used to automatically generate a small set of intermediate quizzes derived from the original question, with the number of quizzes varying between one and three. To ensure that these quizzes meaningfully target potential reasoning errors rather than superficial cues, we employ GPT-5.2 to implement a three-level quality classification framework. This framework evaluates the alignment between the generated adversarial quizzes and the corresponding original math word problems, filtering out low-quality or trivial cases.
+
+\begin{enumerate}
+  \item \textbf{Good.}
+  Quizzes that are both grounded in the problem context and useful for
+  verifying intermediate reasoning steps. These quizzes target critical
+  checkpoints in the solution process (e.g., intermediate calculations,
+  unit conversions, or partial results) without revealing or restating the
+  final answer.
+
+  \item \textbf{\flag{ok\_final}.}
+  Quizzes that, while grounded and potentially useful, essentially restate
+  the original question's final goal or ask for the same final quantity.
+  Although these quizzes are mathematically valid, they do not effectively
+  probe intermediate reasoning skills and are thus classified separately
+  from high-quality adversarial quizzes.
+
+  \item \textbf{Bad.}
+  Quizzes that fail to meet alignment criteria, either not grounded in the
+  problem's context, not useful for checking reasoning steps, or both.
+  These include quizzes that ask about irrelevant information, contain
+  logical inconsistencies, or cannot be answered using information from
+  the original problem.
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[height=0.65\textheight,keepaspectratio]{Image/QuizGeneratePipeline.png}
+  \caption{Quiz generation and quality filtering pipeline.}
+  \label{fig:quiz-generate-pipeline}
+\end{figure}
+
+Then, the verifier model assigns an \code{overall\_ok} flag to each problem--quiz pair set. This flag is set to False if any quiz in the set is labeled as bad, ensuring strict quality control. We observed that
+approximately 791 problems ($\sim$5.3\% of the dataset) consistently produced only bad quizzes across multiple generation attempts. These problems were
+often too simple or straightforward, lacking sufficient intermediate steps to generate meaningful adversarial quizzes.
+
+We removed 791 problematic instances from the original merged dataset, retaining only samples with \code{overall\_ok = True}. This filtering step
+ensures that the model is trained exclusively on high-quality, well-aligned adversarial quizzes that genuinely probe intermediate mathematical reasoning
+rather than trivially restating the final question. After quality filtering, the final training set contains 14{,}183 math problems paired with 41{,}376
+adversarial quizzes, averaging approximately 2.9 quizzes per problem. The resulting training corpus therefore consists of 55{,}559 instances (14{,}183
+original problems and 41{,}376 quiz--answer pairs), forming a clean and well-aligned dataset for reinforcement learning.
+
+\subsection{Baseline Model Configuration}
+
+To evaluate the effectiveness of step-level reinforcement learning across different model scales, we consider three baseline language models: Qwen2.5-7B-Instruct and Qwen2.5-3B-Instruct. These models belong to the same architecture family and share an identical decoder-only Transformer structure, differing only in parameter count. This design allows us to isolate the effect of model capacity when analyzing reinforcement learning signals.
+
+All baseline models are first initialized through supervised fine-tuning (SFT) on the MetaMathQA dataset using Low-Rank Adaptation (LoRA). During this stage, the base model parameters remain frozen, and only the LoRA parameters are optimized. This parameter-efficient setup reduces memory overhead and improves training stability, while enabling the model to acquire task-specific mathematical reasoning behaviors.
+
+After supervised fine-tuning converges, the trained LoRA adapters are merged into the base model weights, producing a single consolidated checkpoint for each model size. The resulting merged models serve as the SFT baselines and represent the final outputs of the supervised learning stage.
+
+For reinforcement learning post-training, we attach a new set of LoRA adapters to these merged SFT models and apply Generative Reinforcement Policy Optimization (GRPO). This separation ensures that the reinforcement learning phase builds upon a fixed SFT-initialized policy, while allowing reinforcement learning updates to be applied independently through newly introduced low-rank parameters.
+
+Baseline performance is evaluated immediately after supervised fine-tuning and prior to any reinforcement learning updates. This evaluation provides a clean reference point, enabling us to attribute subsequent performance changes specifically to the effects of reinforcement learning.
+
+\subsection{Reinforcement Learning Procedure}
+\label{sec:rl-procedure}
+
+Following supervised initialization, we further optimize the policy using
+Group Relative Policy Optimization (GRPO), a PPO-style method that avoids
+training an explicit value function by computing \emph{group-relative}
+advantages from multiple sampled completions per prompt.
+
+\paragraph{Initialization and parameterization.}
+We start from the SFT-pretrained checkpoint and load it as the initial policy.
+In our implementation, the policy is instantiated through an \texttt{ExamModel}
+wrapper that (i) ensures a valid \texttt{pad\_token} by falling back to the
+\texttt{eos\_token} when needed, and (ii) applies parameter-efficient adaptation via LoRA on both attention and MLP projection layers. Concretely, LoRA adapters are injected into
+\[
+\{ \texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj},
+   \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj} \}.
+\]
+
+with rank \(r=128\), scaling \(\alpha=256\), and dropout \(0.05\).
+To improve memory efficiency for long generations, we enable gradient
+checkpointing and disable KV-cache during training (i.e., \texttt{use\_cache=False}).
+
+\paragraph{Training data and prompt format.}
+GRPO is trained on a mixed dataset of GSM8K and MATH training problems with pre-generated intermediate quizzes and gold answers. Each training example contains the original question $q$, the ground-truth final answer, and a small set of quizzes,
+\[
+\{(q_j^{\text{quiz}}, a_j^{\text{quiz}})\}_{j=1}^{N_q},
+\quad N_q \in \{1,2,3\}.
+\]
+, where \(N_q\) varies between 1 and 3.
+At training time, each question is formatted into a fixed template that enforces:
+(1) explicitly delimited reasoning steps (e.g., \texttt{Step 1:}, \texttt{Step 2:}, \dots), and (2) a single final answer in a strict XML-like tag \texttt{<final\_answer>...</final\_answer>}.
+This structure enables reliable parsing of both intermediate step boundaries and the final answer for reward computation.
+The exact prompt templates are provided in Appendix~\ref{app:prompt} and related appendix sections.
+
+\paragraph{Generation and group sampling.}
+For each input question \(q\), GRPO samples a group of \(G\) candidate outputs:
+\[
+o_1, o_2, \dots, o_G \sim \pi_{\theta_{\text{old}}}(\cdot \mid q),
+\]
+where \(\pi_{\theta_{\text{old}}}\) denotes the policy before the current update.
+In our runs, we use \(G=3\) generations per prompt.
+To keep rollouts efficient, we enable vLLM-based decoding in \texttt{colocate}
+mode (single-GPU setting) with \texttt{vllm\_gpu\_memory\_utilization=0.45}.
+Sampling uses \(\texttt{temperature}=0.6\), \(\texttt{top\_p}=0.95\),
+and \(\texttt{max\_tokens}=256\), and generation is terminated early when
+encountering \texttt{</final\_answer>} or the EOS token.
+
+\paragraph{Reward computation.}
+Each sampled output \(o_i\) receives a scalar reward \(r_i = R(q,o_i)\).
+In our framework, the total reward combines three components:
+(i) a step-structure bonus, (ii) an exam reward for final-answer correctness, and (iii) a quiz reward that evaluates intermediate reasoning via quizzes:
+\[
+R(q,o) \;=\; R_{\text{step}}(o)\;+\;R_{\text{exam}}(q,o)\;+\;\lambda_{\text{quiz}}\,
+\mathrm{clip}\!\Big(R_{\text{quiz}}(q,o),-c,c\Big).
+\]
+
+Implementation-wise, the notebook parses the model output by extracting
+\texttt{Step k: ...} blocks and the content inside
+\texttt{<final\_answer>...</final\_answer>}. Outputs that fail formatting (e.g., missing final tag) receive a conservative reward.
+
+\emph{Exam reward.}
+Let \(\mathrm{F1}(p,G)\in[0,1]\) denote token-level F1 between the predicted final
+answer \(p\) and the gold set \(G\). We use a normalized, bounded exam score:
+\[
+R_{\text{exam}}(q,o)
+=\max\!\Big(0,\; \min\!\big(1,\; \mathrm{F1}(p,G) / \tau_{\text{exam}}\big)\Big),
+\]
+where \(\tau_{\text{exam}}\) controls how quickly partial credit saturates.
+In \emph{exact-match-only} mode, we apply:
+\[
+R_{\text{exam}}(q,o)=
+\begin{cases}
+1.0, & \mathrm{EM}(p,G)\ge 1.0,\\
+0.5\cdot \mathrm{F1}(p,G), & \text{otherwise}.
+\end{cases}
+\]
+This design preserves the strong signal from exact match while still providing
+limited shaping from partial overlap when EM fails.
+
+\emph{Step bonus.}
+To discourage premature guessing and encourage explicit reasoning structure,
+we include a step-based bonus computed from the number of extracted steps
+\(n_{\text{steps}}\). Let \(n_{\min}\) be the minimum required number of steps
+and \(b\) the maximum bonus. We use a gated/ratio-style formulation:
+\[
+R_{\text{step}}(o)=
+\begin{cases}
+b, & n_{\text{steps}}\ge n_{\min} \quad(\text{binary mode}),\\
+b\cdot \min\!\left(1,\frac{n_{\text{steps}}}{n_{\min}}\right),
+& (\text{ratio mode}),\\
+0, & \text{otherwise}.
+\end{cases}
+\]
+This reward is only a small shaping term and is not intended to replace final
+answer supervision.
+
+\emph{Quiz reward.}
+For each problem, we evaluate intermediate reasoning by answering short quizzes
+based on partial reasoning chunks. The quiz mechanism provides denser feedback
+without human-annotated chains-of-thought. If a problem has \(N_q\) quizzes,
+we compute an aggregated quiz score and apply clipping to stabilize updates,
+as described in Section~\ref{sec:quiz-reward} and Appendix prompt templates.
+
+\paragraph{Group-relative advantage estimation.}
+Instead of learning a separate value function, GRPO computes advantages within
+the sampled group using normalization:
+\[
+A_i=\frac{r_i-\mathrm{mean}(r_1,\dots,r_G)}{\mathrm{std}(r_1,\dots,r_G)+\epsilon},
+\]
+where \(\epsilon\) is a small constant for numerical stability.
+This converts absolute rewards into relative preferences among candidates
+generated for the same prompt, improving credit assignment without a critic.
+
+\paragraph{Optimization objective with KL regularization.}
+We optimize the policy with a clipped surrogate objective similar to PPO,
+regularized by a KL penalty to a reference policy \(\pi_{\text{ref}}\):
+\begin{align}
+J_{\text{GRPO}}(\theta)
+&= \mathbb{E}\!\left[
+q \sim P(Q),\;
+\{o_i\}_{i=1}^{G} \sim \pi_{\theta_{\text{old}}}(\cdot \mid q)
+\right] \nonumber \\
+&\quad \left[
+\frac{1}{G} \sum_{i=1}^{G}
+\min\Big(
+\rho_i(\theta) A_i,\;
+\operatorname{clip}\big(\rho_i(\theta), 1-\epsilon, 1+\epsilon\big) A_i
+\Big)
+\right]
+- \beta\, D_{\mathrm{KL}}\!\left(
+\pi_\theta \,\|\, \pi_{\text{ref}}
+\right).
+\end{align}
+
+where 
+\begin{align}
+\rho_i(\theta) = 
+\frac{\pi_\theta(o_i \mid q)}
+     {\pi_{\theta_{\text{old}}}(o_i \mid q)}
+\end{align} 
+is the PPO clipping parameter, and \(\beta\) controls KL strength.
+In our configuration, we use \(\beta=0.01\).
+
+\paragraph{Training hyperparameters and batching.}
+We train for one epoch with learning rate \(1\times 10^{-6}\).
+The per-device batch size is 2 prompts with gradient accumulation steps of 2.
+Each prompt produces \(G=3\) completions, and we set
+\texttt{generation\_batch\_size=6} to balance throughput and memory.
+We clip gradient norm at 1.0.
+We also adopt dynamic padding in the data collator and mask padded tokens with
+label value \(-100\) to avoid contributing to the loss.
+
+\paragraph{Checkpointing and export.}
+We save checkpoints every 1000 steps with a rolling limit of 3.
+At the end of training, the model is unwrapped from the accelerator context
+and exported via \texttt{save\_pretrained} with safe tensor serialization, along
+with the tokenizer, ensuring the final GRPO-tuned policy can be reloaded for
+evaluation and further ablations.
+
+\section{Evaluation Metrics and Benchmarking}
+
+We evaluate model performance on four widely used mathematical reasoning benchmarks:
+\textbf{GSM8K}, \textbf{MATH}, \textbf{MMLU}, and \textbf{AIME~2025}.
+These benchmarks span a broad spectrum of reasoning difficulty, covering
+multi-step arithmetic reasoning, symbolic manipulation, competition-level
+mathematics, and professional exam-style multiple-choice questions.
+Together, they provide a comprehensive assessment of both numerical accuracy
+and reasoning robustness.
+
+All evaluations are conducted using a unified benchmarking pipeline that
+standardizes prompt formatting, answer extraction, normalization, and metric
+computation across tasks. Unless otherwise specified, results are computed on
+held-out test sets and averaged over multiple independent runs with fixed
+random seeds.
+
+\subsection{Pass@\texorpdfstring{$1$}{1}}
+
+Pass@1 measures the probability that the model's \emph{first} generated answer
+is correct under greedy decoding.
+Given a dataset of $N$ problems, let $\widehat{y}_i$ denote the model's first
+prediction for problem $i$, and let $y_i$ be the corresponding ground-truth
+answer.
+Pass@1 is defined as:
+\[
+\mathrm{Pass@1}
+\;=\;
+\frac{1}{N}
+\sum_{i=1}^{N}
+\mathbb{I}\!\left(\widehat{y}_i = y_i\right),
+\]
+where $\mathbb{I}(\cdot)$ is the indicator function, equal to $1$ if the
+condition holds and $0$ otherwise.
+
+Pass@1 reflects single-shot reasoning performance without reliance on sampling or self-consistency, and is therefore a strict measure of a model's deterministic reasoning capability.
+
+\subsection{Pass@\texorpdfstring{$k$}{k}}
+
+Pass@$k$ evaluates whether the model can produce \emph{at least one} correct
+answer among the top $k$ generated outputs for a given problem.
+For each problem $i$, the model generates a set of $k$ candidate solutions
+$\{\widehat{y}_{i,1}, \widehat{y}_{i,2}, \ldots, \widehat{y}_{i,k}\}$, where the
+first sample is produced via greedy decoding and the remaining $k-1$ samples
+are obtained through stochastic sampling with temperature and nucleus
+filtering.
+
+Let $n$ denote the total number of generated samples and $c$ the number of
+correct samples among them.
+Following standard practice, Pass@$k$ is estimated as:
+\[
+\mathrm{Pass@}k
+\;=\;
+1 - \prod_{j=n-c+1}^{n}
+\left(1 - \frac{k}{j}\right),
+\]
+with the convention that $\mathrm{Pass@}k = 1$ when $n-c < k$.
+
+Pass@$k$ captures the model's ability to recover a correct reasoning path across
+multiple generations, and is commonly used to evaluate reasoning diversity and
+robustness.
+In this work, Pass@$k$ is reported using direct sampling without additional
+estimator correction.
+
+\subsection{Consensus@\texorpdfstring{$64$}{64} (Con@64)}
+
+In addition to Pass@$k$, we report \textbf{Consensus@64 (Con@64)}, a metric that
+measures the reliability of the model under extensive stochastic sampling.
+For each problem, the model generates $64$ independent solutions using
+non-greedy decoding.
+The final predicted answer is obtained via majority voting over the extracted
+final answers.
+
+Let $\{\widehat{y}_{i,1}, \ldots, \widehat{y}_{i,64}\}$ denote the set of
+generated answers for problem $i$, and let
+\[
+\widehat{y}_i^{\mathrm{cons}}
+=
+\arg\max_{y}
+\sum_{j=1}^{64}
+\mathbb{I}\!\left(\widehat{y}_{i,j} = y\right)
+\]
+be the consensus answer.
+Consensus@64 is then defined as:
+\[
+\mathrm{Con@64}
+=
+\frac{1}{N}
+\sum_{i=1}^{N}
+\mathbb{I}\!\left(
+\widehat{y}_i^{\mathrm{cons}} = y_i
+\right).
+\]
+
+Con@64 captures the \emph{stability} of the model’s reasoning under repeated
+sampling, and is particularly informative for evaluating whether correct
+solutions dominate the model’s output distribution rather than appearing only
+sporadically.
+Unlike Pass@$k$, which only checks for the existence of a correct answer among
+multiple samples, Con@64 requires that correct reasoning emerges as the most
+frequent outcome.
+
+
+\subsection{Exact Match (EM)}
+
+Exact Match (EM) evaluates whether the predicted final answer exactly matches
+the ground-truth answer after task-specific normalization.
+Let $\mathrm{norm}(\cdot)$ denote a normalization function that removes
+irrelevant formatting differences, such as whitespace, punctuation, or
+dataset-specific answer wrappers.
+EM is defined as:
+\[
+\mathrm{EM}
+\;=\;
+\frac{1}{N}
+\sum_{i=1}^{N}
+\mathbb{I}\!\left(
+\mathrm{norm}\!\left(\widehat{y}_i\right)
+=
+\mathrm{norm}\!\left(y_i\right)
+\right).
+\]
+
+For GSM8K and AIME~2025, normalization extracts the final integer answer from a
+predefined output format.
+For MMLU, EM corresponds to exact matching of the predicted multiple-choice
+letter.
+For MATH, EM is computed after extracting the content inside
+$\verb|\boxed{\,\cdot\,}|$, with optional symbolic equivalence checking when
+available.
+
+EM provides a strict correctness criterion and is particularly important for
+benchmarks such as AIME~2025, where partial credit is not meaningful.
+
+\subsection{F1 Score}
+
+The F1 score measures token-level overlap between the predicted answer and the
+ground-truth answer, providing a softer notion of correctness that captures
+partial agreement.
+Let $T(\widehat{y}_i)$ and $T(y_i)$ denote the multisets of tokens appearing in
+the prediction and ground truth, respectively.
+Token-level precision and recall are defined as:
+\[
+\mathrm{Precision}_i
+=
+\frac{\left|T(\widehat{y}_i)\cap T(y_i)\right|}
+{\left|T(\widehat{y}_i)\right|},
+\qquad
+\mathrm{Recall}_i
+=
+\frac{\left|T(\widehat{y}_i)\cap T(y_i)\right|}
+{\left|T(y_i)\right|}.
+\]
+
+The F1 score for a single example is then:
+\[
+\mathrm{F1}_i
+=
+\frac{2\cdot \mathrm{Precision}_i \cdot \mathrm{Recall}_i}
+{\mathrm{Precision}_i + \mathrm{Recall}_i},
+\]
+and the final dataset-level F1 score is obtained by averaging across all
+examples:
+\[
+\mathrm{F1}
+=
+\frac{1}{N}
+\sum_{i=1}^{N}
+\mathrm{F1}_i.
+\]
+
+F1 is primarily reported for GSM8K and MATH, where answers may exhibit minor
+formatting or symbolic variations that are semantically equivalent but not
+captured by exact matching.
+
+\subsection{Benchmark-Specific Evaluation Protocols}
+
+Different benchmarks require task-specific prompting, answer extraction, and
+equivalence checking:
+
+\begin{enumerate}
+\item \textbf{GSM8K.}
+The model is prompted to output the final integer answer in a fixed
+\texttt{\detokenize{#### <number>}} format.
+Evaluation uses exact integer matching for EM and token-level overlap for F1.
+
+\item \textbf{MATH.}
+The model outputs a single mathematical expression wrapped in a boxed format (e.g., \verb|\boxed{x^2 + 1}|). Exact Match is computed after extracting the boxed content, with optional symbolic equivalence checking using computer algebra systems when available.
+
+\item \textbf{MMLU.}
+The model selects a single answer from multiple choices and outputs only the
+corresponding letter.
+Evaluation uses exact matching, and F1 is not reported.
+
+\item \textbf{AIME~2025.}
+The model outputs a single integer in the range $[0,999]$.
+Evaluation focuses on Pass@1 and EM due to the absence of meaningful partial
+credit.
+\end{enumerate}
+
+Across all benchmarks, we report Pass@1, Pass@$k$, EM, and F1 where applicable
+to capture complementary aspects of reasoning performance.
+Pass@1 measures deterministic accuracy, Pass@$k$ reflects recovery under
+sampling, EM enforces strict correctness, and F1 accounts for partial overlap.
+This evaluation suite provides a rigorous and comprehensive assessment of
+mathematical reasoning ability under both single-shot and multi-sample settings.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\appendix
+
+% Fix weird ".1" section numbering in appendix
+\renewcommand{\thesection}{A.\arabic{section}}
+\titleformat{\section}{\normalfont\bfseries}{\thesection}{1em}{}
+\chapter{Appendix}
+\section{Prompt Template for Solution Generation}
+\label{app:prompt}
+\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single]
+You are a careful math and logic reasoning assistant.
+You must first think step by step, and then give a final concise answer
+that directly matches what the question is asking for.
+
+[Instructions]
+- Read the user's question carefully.
+- Write your reasoning as numbered steps:
+  Step 1: ...
+  Step 2: ...
+  Step 3: ...
+  ...
+- After the reasoning is complete, output ONE clear final answer.
+- The final answer MUST:
+  - Match the type requested in the question
+    (e.g., a number, an algebraic expression, a choice like A/B/C/D/E, a probability, etc.).
+  - Be as short and direct as possible (no extra explanation).
+- Put the final answer on a separate line in the form:
+  <final_answer>: <your answer here></final_answer>
+- After you output </final_answer>, do NOT write anything else.
+
+[Example 1 - arithmetic]
+[User]
+Compute 2 + 3 * 4.
+[/User]
+
+[Solution]
+Step 1: According to order of operations, compute the multiplication first: 3 * 4 = 12.
+Step 2: Then add 2 + 12 = 14.
+<final_answer>14</final_answer>
+[/Solution]
+
+[Example 2 - multiple choice]
+[User]
+Two trains are moving toward each other...
+(choices: A, B, C, D, E)
+[/User]
+
+[Solution]
+Step 1: Convert both speeds to m/s.
+Step 2: Compute the relative speed and time until they meet.
+Step 3: Match the numerical result to the closest option.
+<final_answer>C</final_answer>
+[/Solution]
+
+Now follow the same style for the new question.
+
+[User]
+{question}
+[/User]
+
+[Solution]
+\end{lstlisting}
+
+\section{Prompt Template for Quiz Answering}
+\label{app:quiz-prompt}
+
+\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single, breaklines=true, breakatwhitespace=true]
+[User Question]
+{question}
+[/User Question]
+
+[Partial Solution]
+{chunk text}
+[/Partial Solution]
+
+[QUIZ]
+{quiz}
+[/QUIZ]
+
+[Instruction]
+Only output the final answer token(s) (e.g., a number, fraction a/b, or A-E).
+No words, no punctuation, no explanation.
+[/Instruction]
+\end{lstlisting}
+
+\section{Prompt Template for Quiz Generation}
+\label{app:quiz-generation-prompt}
+
+\begin{lstlisting}
+You are generating intermediate quizzes for math reasoning.
+
+Given the math problem and a correct solution below, generate up to {n} quizzes.
+
+Rules:
+- Each quiz must have an answer that is ONLY one of:
+  (A) a number (integer/decimal, no words),
+  (B) a multiple-choice letter (A/B/C/D),
+  (C) a formula in a single line using only variables/numbers and + - * / ^ ( ) (no sentences).
+- Do NOT ask "what operation", "what should we do next", or any explanation-type question.
+- Prefer numeric checkpoints that are critical for getting the final answer.
+
+Return in JSON only:
+
+{
+  "quizzes": [
+    {
+      "question": "...",
+      "answer": "..."
+    }
+  ]
+}
+
+Problem:
+{question}
+
+Correct solution:
+{exam_answer}
+\end{lstlisting}
+
+\section{Prompt template for Quiz-Question Alignment}
+\label{app:quiz-question-alignment}
+
+\begin{lstlisting}
+You judge whether quizzes align with a math word problem.
+Be conservative. Do NOT solve the whole problem.
+If a quiz essentially restates the original question's final goal 
+(e.g., asks for the same final quantity), label it as "ok_final" even if it is grounded and useful.
+\end{lstlisting}
+
+
+\end{document}

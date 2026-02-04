@@ -1,0 +1,42 @@
+\documentclass{article}
+
+% Required packages
+\usepackage{booktabs}    % For \toprule, \midrule, \bottomrule
+\usepackage{multirow}    % For \multirow
+\usepackage{graphicx}    % For figures and \resizebox
+\usepackage[margin=1in]{geometry}  % Adjust margins
+\usepackage{xcolor}      % For colored text
+
+% Define colors for positive/negative changes
+\definecolor{positive}{RGB}{0, 128, 0}
+\definecolor{negative}{RGB}{200, 0, 0}
+
+\begin{document}
+
+% ============================================================
+% Table: Ablation Study Comparison
+% ============================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Ablation Study: Effect of Removing Quiz Component from GRPO Training}
+\label{tab:ablation_comparison}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l|cc|cc|cc|cc}
+\toprule
+\multirow{2}{*}{\textbf{Model}} & \multicolumn{2}{c|}{\textbf{GSM8K}} & \multicolumn{2}{c|}{\textbf{MATH}} & \multicolumn{2}{c|}{\textbf{MMLU}} & \multicolumn{2}{c}{\textbf{AIME 2025}} \\
+& Pass@1 & Pass@5 & Pass@1 & Pass@5 & Pass@1 & Pass@5 & Pass@1 & Pass@5 \\
+\midrule
+Qwen2.5-7B-SFT-GRPO & 51.5 & 92.5 & 18.0 & 27.5 & 62.5 & 65.5 & 0.0 & 3.3 \\
+Qwen2.5-7B-SFT-GRPO (w/o Quiz) & 48.0 & 92.5 & 19.0 & 28.0 & 61.5 & 66.5 & 0.0 & 0.0 \\
+\midrule
+$\Delta$ (Difference) & \textcolor{negative}{-3.5} & 0.0 & \textcolor{positive}{+1.0} & \textcolor{positive}{+0.5} & \textcolor{negative}{-1.0} & \textcolor{positive}{+1.0} & 0.0 & \textcolor{negative}{-3.3} \\
+\bottomrule
+\end{tabular}%
+}
+
+\vspace{2mm}
+\footnotesize{Results are reported as percentages. \textcolor{positive}{Green} indicates improvement, \textcolor{negative}{red} indicates degradation when removing the Quiz component. Evaluations conducted on 200 samples (GSM8K, MATH, MMLU) and 30 samples (AIME 2025).}
+\end{table}
+
+\end{document}
