@@ -584,7 +584,7 @@ $\epsilon$ is the clipping threshold,
 and $\beta$ controls the strength of the KL regularization. This formulation encourages the model to prefer reasoning trajectories that perform better relative to alternatives generated for the same question.
 
 \section{Reward Modeling}
-
+\label{sec:reward-modeling}
 To provide informative training signals for long-horizon reasoning without human-annotated traces,
 we design an reward function that decomposes feedback into three components:
 a step bonus, a final-answer exam reward, and  intermediate quiz rewards.
@@ -787,108 +787,180 @@ Chunk 3 contributes $\approx 60\%$ of the exam success, chunk 1 contributes $\ap
 and chunk 2 only $\approx 6\%$, indicating that chunk 2 is the weakest part of the reasoning trace.
 
 
-\section{Targeting Weak Chunks with GRPO}
+\section{Saliency-Guided Reward Reweighting in GRPO}
 \label{sec:targeting-weak-chunk}
 
-Given the chunk-level saliency distribution $\{w_j\}_{j=1}^{J}$ defined in Section~3.8.5, we identify reasoning chunks that contribute little to final exam success and selectively reinforce them with GRPO.
+Given the chunk-level saliency distribution $\{w_j\}_{j=1}^{J}$ defined in Section~\ref{sec:saliency_over_chunk}, we identify reasoning chunks that contribute little to final exam success and selectively reinforce the corresponding training problems with GRPO.
 
-Unlike PPO, which operates on step-level advantages with an explicit value function, GRPO performs trajectory-level optimization by comparing multiple complete reasoning outputs within the same group. We therefore adapt the weak-chunk cherry-picking mechanism to reweight \emph{group-relative advantages} instead of per-step advantages.
+The key idea is to operate entirely at the \emph{reward level}
+rather than modifying the GRPO advantage formula or its clipped objective, 
+we adjust the scalar reward returned to the trainer so that problems containing weak reasoning patterns 
+receive amplified reward deviations within each group. This design keeps the approach compatible with any 
+standard GRPO implementation (e.g., the TRL library's \texttt{GRPOTrainer}) without requiring changes to 
+the optimization loop itself.
 
-\subsection{Identifying weak chunks.}
-Let $\mathcal{W} \subseteq \{1,\dots,J\}$ denote the set of low-saliency chunks:
+\subsubsection{Building the Weak-Chunk Database}
+\label{sec:weak-chunk-db}
+
+The saliency analysis described in Section~\ref{sec:saliency_over_chunk} produces, for every analyzed problem, a normalized weight vector $\mathbf{w} = (w_1, \dots, w_J)$ over its $J$ reasoning chunks.  We say a problem \emph{contains a weak chunk} if at least one of its chunks falls below a saliency threshold $\delta$:
+%
 \begin{equation}
-\mathcal{W} =
-\begin{cases}
-\arg\operatorname{bottom}_k \{ w_j \}, & \text{(lowest-$k$ chunks)}, \\
-\{ j \mid w_j \le \delta \}, & \text{(below threshold $\delta$)}.
-\end{cases}
+  \mathcal{W}_q \;=\; \bigl\{\, j \;\bigm|\; w_j \le \delta \,\bigr\},
+  \label{eq:weak-set}
 \end{equation}
-
-\subsection{GRPO group advantages.}
-For a given question $q$, GRPO samples a group of $G$ complete reasoning trajectories
-$\{o_1,\dots,o_G\} \sim \pi_{\theta_{\text{old}}}(\cdot \mid q)$.
-Each trajectory receives a scalar reward $r_i$, and the standard GRPO advantage is computed as
+%
+where $\delta = 0.10$ in our experiments.  For each such problem $q$, we store a pre-computed \emph{weak-chunk intensity} score
+%
 \begin{equation}
-A_i =
-\frac{
-r_i - \operatorname{mean}(\{r_1,\dots,r_G\})
-}{
-\operatorname{std}(\{r_1,\dots,r_G\})
-}.
+  \bar{m}_q \;=\; \frac{|\mathcal{W}_q|}{J},
+  \label{eq:m-bar}
 \end{equation}
+%
+which represents the fraction of reasoning chunks classified as weak.  These entries are turned into a static lookup table (the weak-chunk database), keyed by the problem identifier.
+The database is constructed offline and remains fixed throughout GRPO training.  This static design avoids the computational cost of re-running saliency analysis during training.
 
-\subsection{Weak-chunk-aware advantage scaling.}
-To emphasize trajectories that expose weak reasoning segments, we define a weak-chunk indicator:
-\begin{equation}
-m_j = \mathbb{1}\{ j \in \mathcal{W} \},
-\end{equation}
 
-and aggregate it at the trajectory level as
-\begin{equation}
-\bar m_i = \frac{1}{J} \sum_{j=1}^{J} m_{i,j}.
-\end{equation}
 
-We then define an adjusted advantage as
-\begin{equation}
-\hat A_i = (1 + \kappa \bar m_i) A_i,
-\end{equation}
-where $\kappa > 0$ is a focus coefficient. Trajectories that contain weak reasoning chunks therefore receive amplified gradient magnitudes, enabling targeted credit assignment.
+\subsubsection{Reward-Level Weak-Chunk Focusing}
+\label{sec:reward-focusing}
 
-\subsection{GRPO objective with weak-chunk focus.}
-Let the importance ratio be
-\begin{equation}
-\rho_i(\theta) =
-\frac{\pi_\theta(o_i \mid q)}{\pi_{\theta_{\text{old}}}(o_i \mid q)}.
-\end{equation}
-The weak-chunk-aware GRPO objective is
-\begin{equation}
-\mathcal{L}_{\text{GRPO}}^{\text{focus}}
-=
-\mathbb{E}
-\left[
-\frac{1}{G}
-\sum_{i=1}^{G}
-\min
-\left(
-\rho_i(\theta)\hat A_i,
-\operatorname{clip}(\rho_i(\theta), 1-\epsilon, 1+\epsilon)\hat A_i
-\right)
-\right]
--
-\beta D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\text{ref}}).
-\end{equation}
-
-\paragraph{Stopping criterion.}
-The stopping criterion operates at the level of chunk saliency estimation and is therefore independent of the GRPO. A chunk $j \in \mathcal{W}$ is removed from the weak set once its estimated contribution improves:
-\begin{equation}
-\Delta w_j = w^{\text{new}}_j - w^{\text{old}}_j \ge \eta
-\quad \text{or} \quad
-\Delta Q_j \ge \eta,
-\end{equation}
-where $Q_j$ denotes the normalized quiz reward associated with chunk $j$.
-
-\paragraph{Example.}
-Assume $T=6$ reasoning steps with chunk size $m=2$, resulting in $J=3$ chunks.
-The estimated saliency distribution is
+During GRPO training, the trainer samples a group of $G$ complete reasoning trajectories 
 \[
-w = [0.22,\; 0.53,\; 0.00],
-\]
-so the weakest chunk is $\mathcal{W}=\{3\}$.
+\{o_1, \dots, o_G\}
+\sim
+\pi_{\theta_{\mathrm{old}}}(\cdot \mid q),
+\] for each question $q$.  
+Each trajectory receives a scalar reward $r_i = R(q, o_i)$ computed from the three 
+reward components (step bonus, exam reward, and quiz reward) defined in Section~\ref{sec:reward-modeling}.
 
-For a GRPO group of $G=4$ trajectories, suppose the normalized group-relative advantages are
-\[
-A = [0.40,\; 0.30,\; 0.10,\; -0.10],
-\]
-and the weak-chunk indicators are
-\[
-\bar m = [0,\; 0,\; 1,\; 1].
-\]
-With $\kappa = 1.0$, the adjusted advantages become
-\[
-\hat A = [0.40,\; 0.30,\; 0.20,\; -0.20].
-\]
+For questions that appear in the weak-chunk database, we apply a \emph{reward-level focusing} adjustment that 
+amplifies each trajectory's deviation from the group mean:
+%
+\begin{equation}
+  r'_i \;=\; r_i \;+\; \kappa \cdot \bar{m}_q \cdot \bigl(r_i - \mu_{\mathrm{group}}\bigr),
+  \label{eq:reward-focus}
+\end{equation}
+%
+where $\mu_{\mathrm{group}} = \frac{1}{G}\sum_{i=1}^{G} r_i$ is the mean reward within the group, $\bar{m}_q$ is the pre-computed weak-chunk intensity from Equation~\eqref{eq:m-bar}, and $\kappa > 0$ is a focus coefficient.  For problems not in the weak-chunk database, $\bar{m}_q = 0$ and the reward remains unchanged.
 
-Thus, trajectories that contain weak reasoning chunks receive stronger positive or negative gradients, accelerating improvement on deficient reasoning segments while preserving GRPO’s group-relative and clipped optimization structure.
+The effect of Equation~\eqref{eq:reward-focus} is intuitive. In a group of trajectories for a weak-chunk problem, trajectories that score above the group mean have their reward increased, while those scoring below the mean have their reward decreased.  The magnitude of this shift is proportional to both the focus coefficient $\kappa$ and the fraction of weak chunks $\bar{m}_q$. This amplification increases the selection pressure within weak-chunk problems, 
+encouraging the policy to move away from lower reward reasoning trajectories 
+and toward higher reward alternatives. 
+If the reward gap is primarily driven by weak reasoning segments, 
+this mechanism indirectly promotes trajectories that repair those segments 
+in subsequent rollouts.
+
+
+\paragraph{Relationship to advantage scaling.}
+
+An alternative approach would directly scale the GRPO advantage,
+such as $\hat{A}_i = (1 + \kappa \bar{m}_q) A_i$.
+However, this is not mathematically equivalent to the reward-level
+formulation in Equation~\eqref{eq:reward-focus}.
+Direct advantage scaling modifies the gradient magnitude after
+normalization, whereas reward-level focusing reshapes the reward
+distribution itself and therefore alters both the group variance
+and the subsequent normalization step.
+As a result, the two methods may lead to different optimization
+dynamics in practice.
+
+
+
+% \subsection{Identifying weak chunks.}
+% Let $\mathcal{W} \subseteq \{1,\dots,J\}$ denote the set of low-saliency chunks:
+% \begin{equation}
+% \mathcal{W} =
+% \begin{cases}
+% \arg\operatorname{bottom}_k \{ w_j \}, & \text{(lowest-$k$ chunks)}, \\
+% \{ j \mid w_j \le \delta \}, & \text{(below threshold $\delta$)}.
+% \end{cases}
+% \end{equation}
+
+% \subsection{GRPO group advantages.}
+% For a given question $q$, GRPO samples a group of $G$ complete reasoning trajectories
+% $\{o_1,\dots,o_G\} \sim \pi_{\theta_{\text{old}}}(\cdot \mid q)$.
+% Each trajectory receives a scalar reward $r_i$, and the standard GRPO advantage is computed as
+% \begin{equation}
+% A_i =
+% \frac{
+% r_i - \operatorname{mean}(\{r_1,\dots,r_G\})
+% }{
+% \operatorname{std}(\{r_1,\dots,r_G\})
+% }.
+% \end{equation}
+
+% \subsection{Weak-chunk-aware advantage scaling.}
+% To emphasize trajectories that expose weak reasoning segments, we define a weak-chunk indicator:
+% \begin{equation}
+% m_j = \mathbb{1}\{ j \in \mathcal{W} \},
+% \end{equation}
+
+% and aggregate it at the trajectory level as
+% \begin{equation}
+% \bar m_i = \frac{1}{J} \sum_{j=1}^{J} m_{i,j}.
+% \end{equation}
+
+% We then define an adjusted advantage as
+% \begin{equation}
+% \hat A_i = (1 + \kappa \bar m_i) A_i,
+% \end{equation}
+% where $\kappa > 0$ is a focus coefficient. Trajectories that contain weak reasoning chunks therefore receive amplified gradient magnitudes, enabling targeted credit assignment.
+
+% \subsection{GRPO objective with weak-chunk focus.}
+% Let the importance ratio be
+% \begin{equation}
+% \rho_i(\theta) =
+% \frac{\pi_\theta(o_i \mid q)}{\pi_{\theta_{\text{old}}}(o_i \mid q)}.
+% \end{equation}
+% The weak-chunk-aware GRPO objective is
+% \begin{equation}
+% \mathcal{L}_{\text{GRPO}}^{\text{focus}}
+% =
+% \mathbb{E}
+% \left[
+% \frac{1}{G}
+% \sum_{i=1}^{G}
+% \min
+% \left(
+% \rho_i(\theta)\hat A_i,
+% \operatorname{clip}(\rho_i(\theta), 1-\epsilon, 1+\epsilon)\hat A_i
+% \right)
+% \right]
+% -
+% \beta D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\text{ref}}).
+% \end{equation}
+
+% \paragraph{Stopping criterion.}
+% The stopping criterion operates at the level of chunk saliency estimation and is therefore independent of the GRPO. A chunk $j \in \mathcal{W}$ is removed from the weak set once its estimated contribution improves:
+% \begin{equation}
+% \Delta w_j = w^{\text{new}}_j - w^{\text{old}}_j \ge \eta
+% \quad \text{or} \quad
+% \Delta Q_j \ge \eta,
+% \end{equation}
+% where $Q_j$ denotes the normalized quiz reward associated with chunk $j$.
+
+% \paragraph{Example.}
+% Assume $T=6$ reasoning steps with chunk size $m=2$, resulting in $J=3$ chunks.
+% The estimated saliency distribution is
+% \[
+% w = [0.22,\; 0.53,\; 0.00],
+% \]
+% so the weakest chunk is $\mathcal{W}=\{3\}$.
+
+% For a GRPO group of $G=4$ trajectories, suppose the normalized group-relative advantages are
+% \[
+% A = [0.40,\; 0.30,\; 0.10,\; -0.10],
+% \]
+% and the weak-chunk indicators are
+% \[
+% \bar m = [0,\; 0,\; 1,\; 1].
+% \]
+% With $\kappa = 1.0$, the adjusted advantages become
+% \[
+% \hat A = [0.40,\; 0.30,\; 0.20,\; -0.20].
+% \]
+
+% Thus, trajectories that contain weak reasoning chunks receive stronger positive or negative gradients, accelerating improvement on deficient reasoning segments while preserving GRPO’s group-relative and clipped optimization structure.
 
 
 \chapter{Experiments and Results}
@@ -1090,6 +1162,45 @@ Each prompt produces \(G=3\) completions, and we set
 We clip gradient norm at 1.0.
 We also adopt dynamic padding in the data collator and mask padded tokens with
 label value \(-100\) to avoid contributing to the loss.
+
+\subsection{Reward Reweighting in GRPO}
+
+\paragraph{Training Data Preparation}
+\label{sec:weak-chunk-data-prep}
+
+We construct the GRPO training set by first sampling 5{,}000 problems at random. We then ensure that all 1{,}000 weak-chunk problems from \ref{sec:weak-chunk-db} are included. Any missing weak-chunk items are added from the full cache, and the same number of non-weak problems are removed to keep the total size at 5{,}000. This guarantees full weak-chunk coverage while maintaining a balanced training pool.
+
+\paragraph{Reward Reweighting Mechanism}
+
+Let $\{r_i\}_{i=1}^{G}$ denote the scalar rewards of the $G$ trajectories sampled for the same question $q$ under GRPO. 
+We introduce a reward-level reweighting mechanism that selectively amplifies within-group reward differences for weak-chunk problems.
+
+Let
+\begin{equation}
+\mu_{\text{group}} = \frac{1}{G} \sum_{i=1}^{G} r_i
+\end{equation}
+be the mean reward within the group. 
+
+For questions that appear in the weak-chunk database, we compute a weak intensity score 
+$\bar{m}_q$ representing the fraction of weak reasoning chunks in that problem. 
+We then reshape the reward as
+
+\begin{equation}
+r_i' = r_i + \kappa \, \bar{m}_q \, (r_i - \mu_{\text{group}})
+\end{equation}
+
+where $\kappa$ is a focusing coefficient. 
+In our experiments, we set $\kappa = 0.5$ unless otherwise specified. 
+For questions not marked as weak-chunk problems, we use $\bar{m}_q = 0$ and keep $r_i' = r_i$.
+
+\paragraph{Experimental Settings}
+
+We use a group size $G$ identical to the baseline GRPO configuration. 
+All other hyperparameters, including learning rate, batch size, generation length, KL coefficient, 
+and reward thresholds, remain unchanged from the main GRPO setup. 
+This ensures that any observed performance difference can be attributed solely to the reward reweighting mechanism.
+
+
 
 \section{Evaluation Metrics and Benchmarking}
 
@@ -1307,7 +1418,7 @@ and reasoning stability under stochastic decoding.
 \begin{figure}[H]
     \centering
     \includegraphics[width=1\textwidth]
-    {Image/all_model_comparison2.png}
+    {Image/all_model_comparison.png}
     \caption{Benchmark comparison of all configurations.}
     \label{fig:grpo_only_reward}
 \end{figure}
@@ -1343,7 +1454,7 @@ Qwen2.5-7B-Instruct-GRPO (w/o SFT, Quiz, Step)
 & 89.5 & 47.0 & 47.8 & 6.7 & 0.0 \\
 
 Qwen2.5-7B-Instruct-GRPO (w/o SFT) 
-& \textbf{91.0} & \textbf{53.0} & \textbf{48.0} & \textbf{13.3} & \textbf{10.0} \\
+& \textbf{91.0} & \textbf{53.0} & \textbf{49.0} & \textbf{13.3} & \textbf{10.0} \\
 \bottomrule
 \end{tabular}%
 }
@@ -1439,7 +1550,7 @@ difficulty and depth of reasoning.
 
 As shown in Table~\ref{tab:grpo_three_models}, applying GRPO with quiz and step rewards directly to Qwen2.5-7B-Instruct yields strong performance across all evaluated benchmarks, despite the absence of supervised fine-tuning initialization. On GSM8K, the model achieves a Pass@1 accuracy of 91.0\%.
 
-The improvements extend to more challenging benchmarks that require longer reasoning chains. On the MATH dataset, the model attains 53.0\% Pass@1, outperforming instruction-tuned baselines that do not incorporate reinforcement learning with quiz-based reward and step bonus. On MATH500, a more difficult subset selected from the original MATH benchmark to emphasize harder and more reasoning-intensive problems, the model achieves 48.0\% Pass@1, indicating improved generalization to high-difficulty instances beyond the broader MATH distribution. 
+The improvements extend to more challenging benchmarks that require longer reasoning chains. On the MATH dataset, the model attains 53.0\% Pass@1, outperforming instruction-tuned baselines that do not incorporate reinforcement learning with quiz-based reward and step bonus. On MATH500, a more difficult subset selected from the original MATH benchmark to emphasize harder and more reasoning-intensive problems, the model achieves 49.0\% Pass@1, indicating improved generalization to high-difficulty instances beyond the broader MATH distribution. 
 On AIME~2024, performance remains lower due to extreme difficulty and competition-level problems. However, the GRPO only model without SFT still achieves the strongest overall results among all compared models, with a Pass@5 of 13.3\% and Con@64 of 10\%. This indicates that reinforcement learning helps the model produce correct answers more consistently across different samples, rather than relying on occasional lucky generations, even on very difficult problems.
 
 Overall, this study shows that the proposed method does not rely heavily on supervised fine-tuning as a prerequisite for effective learning. Instead, the quizzes and step-level rewards provide sufficient guidance for reinforcement learning to improve long-horizon reasoning behavior. Even without human-annotated solutions, the model is able to make steady progress by learning from its own successes and failures. This suggests that reinforcement learning can serve as a practical and lightweight alternative for enhancing mathematical reasoning in LLMs, especially under limited annotation budgets and realistic computational constraints.
@@ -1725,17 +1836,22 @@ increases.
 % ────────────────────────────────────────────────────────────
 
 A central assumption of the proposed reward design is that intermediate
-quiz performance is predictive of the correctness of final answer.
-To test this assumption, we analyze the relationship between quiz and exam outcomes across all $480 \times 5 = 2{,}400$
-individual runs.
+quiz performance is predictive of the correctness of the final answer.
+To examine this assumption, we analyze the relationship between quiz
+and exam outcomes across all individual runs on both benchmarks,
+covering $480 \times 5 = 2{,}400$ runs for GSM8K and
+$370 \times 5 = 1{,}850$ runs for MATH.
+
 
 \paragraph{Contingency analysis.}
 Table~\ref{tab:quiz-exam-contingency-gsm8k-math} presents the $2 \times 2$
-contingency table.  When all quizzes pass, the exam failure rate is
-only 1.63\%.  When any quiz fails, it rises to 17.44\%, approximately
-\textbf{10.7 times higher}.
-This confirms that quiz failures capture meaningful intermediate
-reasoning deficiencies rather than acting as noise.
+contingency tables for both datasets. On GSM8K, when all quizzes pass,
+the exam failure rate is only 1.63\%, but it increases to 17.44\% when
+any quiz fails, a \textbf{10.7$\times$} rise. On MATH, the failure rate
+increases from 10.4\% to 26.1\% (approximately \textbf{2.5$\times$}).
+These results indicate that quiz failures are predictive of exam
+failures on both benchmarks, although the coupling is substantially
+stronger on GSM8K than on the harder MATH dataset.
 
 \begin{table}[H]
 \centering
@@ -1759,7 +1875,7 @@ reasoning deficiencies rather than acting as noise.
 
 \paragraph{Scaling effect of quiz failures.}
 Beyond the binary distinction, Table~\ref{tab:dose-response-gsm8k-math} and
-Figure~\ref{fig:dose-response} show that the probability of exam failure 
+Figure~\ref{fig:scaling-effect-line-chart-gsm8k-math} show that the probability of exam failure 
 increases monotonically with the number of quiz failures in a
 single run, showing a clear upward trend.
 
@@ -1851,11 +1967,11 @@ single run, showing a clear upward trend.
 \end{axis}
 \end{tikzpicture}
 \caption{Exam failure probability increases with the number of quiz failures per run on both GSM8K and MATH. The increase is sharper on GSM8K, while MATH exhibits a higher baseline failure rate even when all quizzes pass.}
-\label{fig:dose-response-gsm8k-math}
+\label{fig:scaling-effect-line-chart-gsm8k-math}
 \end{figure}
 
 
-The near exponential growth suggests that quiz failures are not
+The growth suggests that quiz failures are not
 independent. A run in which multiple intermediate steps fail is
 likely to produce an incorrect final answer.
 This validates the design of the quiz reward in Section~\ref{sec:quiz-reward} as a
@@ -1874,7 +1990,7 @@ quiz failure rates by chunk position across all valid runs, and
 Table~\ref{tab:weak-chunk-position-gsm8k-math} reports the position distribution
 of weak chunks (i.e., chunks with $w_j \le 0.10$).
 
-\begin{table}[H]
+\begin{table}[tbp]
 \centering
 
 \begin{minipage}[t]{0.475\textwidth}
@@ -1925,7 +2041,7 @@ of weak chunks (i.e., chunks with $w_j \le 0.10$).
 
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[tbp]
 \centering
 
 \begin{subfigure}[t]{0.475\textwidth}
@@ -2018,14 +2134,17 @@ of weak chunks (i.e., chunks with $w_j \le 0.10$).
 \label{fig:positional-analysis-gsm8k-math}
 \end{figure}
 
+The positional analysis reveals distinct patterns across the two
+benchmarks. On GSM8K, both quiz failures and weak chunks show a clear gradient, with higher failure rates toward the final chunk. 
+This pattern is consistent with error accumulation in sequential reasoning, where mistakes in earlier steps propagate and turn into failures during final integration.
 
+In contrast, MATH does not show a monotonic positional gradient.
+Quiz failure rates remain uniformly high across all positions, and weak
+chunks are distributed symmetrically between the first and last
+positions. This suggests that on harder problems, failures are not
+confined to late chunk integration but can arise both from early problem
+formulation and from final computation steps.
 
-Both analyses reveal a consistent positional gradient. Quiz failures
-and low-saliency chunks are concentrated toward the end of the
-reasoning trace.  This pattern is consistent with error accumulation in
-sequential reasoning, where small mistakes in earlier steps compound
-and turn into failures in later integration steps.
-Since reasoning failures are most concentrated in the final chunk, focusing training on late-stage reasoning steps is likely to produce the largest gains in overall accuracy.
 
 % ────────────────────────────────────────────────────────────
 \subsubsection{Saliency Patterns}
@@ -2131,15 +2250,24 @@ typically only have one standard solution path.
 % ────────────────────────────────────────────────────────────
 
 Among the 20 degenerate items (all $K=5$ exam runs incorrect), a
-noteworthy subset shows \emph{decoupled} quiz and exam performance.
-Of these 20 items, 18 failed all 5 exam runs with $E_k = 0$, and 2
-produced malformed outputs ($E_k = -1$).  However, several degenerate
-items achieved high quiz scores despite consistent exam failure.
-For instance, \texttt{gsm8k\_1682} obtained perfect quiz scores
-($Q_{k,j} = 1$ for all $k, j$) while failing the final exam on every
-run. Outcome-only supervision treats these cases the same as problems with incorrect reasoning throughout, even though the intermediate steps are mostly correct and the failure occurs only at the final computation.
+noteworthy subset shows \emph{decoupled} quiz and exam performance
+that several degenerate
+items achieved high quiz scores but consistent exam failure.
+Among the 20 GSM8K degenerate items, 11 (55\%) achieved a mean quiz
+score above 0.50 but failing all exam runs, and 3 items obtained
+perfect quiz scores ($\bar{Q} = 1.0$) across all $K=5$ runs.
 
+The effect is substantially more pronounced on MATH, where 130 items
+are degenerate. Of these, 47 (36.2\%) maintained mean quiz scores
+above 0.50, and 7 (5.4\%) achieved perfect quiz scores while
+consistently failing the exam. The higher proportion of these
+cases suggests that exam failure on harder problems often arises from
+final-stage breakdowns or formatting issues rather than uniformly
+incorrect intermediate reasoning.
 
+Outcome only supervision treats all such cases as equally incorrect,
+even when intermediate reasoning steps are largely correct and the
+failure occurs only at the final integration or computation stage.
 
 % ────────────────────────────────────────────────────────────
 \subsubsection{Correct Rate and Saliency Variance}
@@ -2153,7 +2281,7 @@ saliency variance changes between groups.
 
 \begin{table}[H]
 \centering
-\caption{Saliency variance by correct rate group (GSM8K vs.\ MATH).
+\caption{Saliency variance by correct rate group (GSM8K and MATH).
 Lower correct rates correspond to higher saliency variance.}
 \label{tab:correct-rate-bins-gsm8k-math}
 \begin{tabular}{llcc}
@@ -2161,13 +2289,13 @@ Lower correct rates correspond to higher saliency variance.}
 \textbf{Dataset} & \textbf{Correct Rate Group} & \textbf{Count}
     & \textbf{Mean Saliency Var} \\
 \midrule
-\multirow{4}{*}{GSM8K}
+\multirow{4}{*}{\shortstack{GSM8K\\(N=500)}}
 & Perfect (1.0)      & 421 & 0.010 \\
 & High (0.8--0.99)   &  26 & 0.011 \\
 & Medium (0.4--0.79) &  25 & 0.037 \\
 & Low (0.0--0.39)    &   8 & 0.035 \\
 \midrule
-\multirow{4}{*}{MATH}
+\multirow{4}{*}{\shortstack{MATH\\(N=500)}}
 & Perfect (1.0)      & 225 & 0.038 \\
 & High (0.8--0.99)   &  50 & 0.039 \\
 & Medium (0.4--0.79) &  66 & 0.045 \\
@@ -2226,21 +2354,25 @@ Lower correct rates correspond to higher saliency variance.}
 
 \end{axis}
 \end{tikzpicture}
-\caption{Mean saliency variance by correct rate group (GSM8K vs.\ MATH).
+\caption{Mean saliency variance by correct rate group (GSM8K and MATH).
 MATH exhibits consistently higher saliency variance across all difficulty levels,
 with especially large variance in the low-correct-rate regime.}
 \label{fig:variance-by-correctrate-gsm8k-math}
 \end{figure}
 
-The data reveals that problems with medium correct rates
-(0.4--0.79) show 3--4 times higher saliency variance than
-perfectly solved problems.  This confirms that saliency analysis is
-most informative at the intermediate difficulty range, where the model
-occasionally fails and the saliency distribution reveals which
-reasoning chunks are responsible for the inconsistency.  For perfectly
-solved problems, saliency is uninformative and for
-consistently failed problems, saliency is degenerate.  The most
-actionable diagnostic signal lies in the middle, where chunk-level credit assignment helps pinpoint specific reasoning steps that can be directly improved through targeted reinforcement.
+On GSM8K, problems in the medium correct-rate range (0.4--0.79)
+show substantially higher saliency variance than perfectly solved
+problems (0.037 vs.\ 0.010). This indicates that saliency analysis is
+most informative at intermediate difficulty levels, where the model
+occasionally fails and chunk-level credit assignment helps identify
+which reasoning steps drive the inconsistency. For perfectly solved
+problems, saliency remains largely uniform and therefore less diagnostic.
+
+In contrast, MATH maintains relatively high saliency variance across all
+difficulty groups, with especially large variance in the low-correct-rate
+regime (0.079). Even perfectly solved MATH problems show higher variance than GSM8K,
+indicating that structural instability persists across difficulty levels
+rather than emerging only in partially solved cases.
 
 
 % ────────────────────────────────────────────────────────────
@@ -2248,55 +2380,66 @@ actionable diagnostic signal lies in the middle, where chunk-level credit assign
 \label{sec:saliency-summary}
 % ────────────────────────────────────────────────────────────
 
-The aggregate saliency analysis yields several findings with
-implications for training and reward design:
+The aggregate saliency analysis reveals distinct patterns across GSM8K
+and MATH, with implications for reward design and targeted training.
 
 \begin{enumerate}[nosep]
-\item \textbf{Quiz rewards are predictive, not decorative.}
-    Quiz failure increases the probability of exam failure by a factor
-    of 10.73$\times$ (Table~\ref{tab:quiz-exam-contingency}), and the
-    scaling pattern in Table~\ref{tab:dose-response} confirms
-    that quiz performance provides a graded signal rather binary
-    noise.  This suggests the quiz rewards capture meaningful information for
-    intermediate reasoning quality.
 
-\item \textbf{Late Stage Reasoning Is More Error Prone.}
-    Reasoning failures tend to occur in later reasoning chunks. Both quiz failure rates and weak-chunk positions show a clear positional trend, with the final chunk being the most error-prone (Figure~\ref{fig:positional-analysis}). This pattern suggests that errors accumulate over the course of reasoning and motivates our targeted reinforcement strategies.
+\item \textbf{Quiz rewards are predictive, but coupling strength differs.}
+On GSM8K, quiz failure increases the probability of exam failure by
+10.7$\times$, and the dose–response curve shows a sharp monotonic
+increase (Tables~\ref{tab:quiz-exam-contingency-gsm8k-math} and
+\ref{tab:dose-response-gsm8k-math}). On MATH, quiz failure remains
+predictive but the effect is weaker (2.5$\times$), reflecting more
+distributed sources of failure in harder reasoning tasks. Quiz rewards
+therefore provide meaningful intermediate supervision on both
+benchmarks with different strengths.
 
-\item \textbf{Non-uniform saliency signals fragile reasoning.}
-    Single-dominant problems have the lowest correct rate (0.813)
-    among all patterns, and medium-difficulty problems exhibit
-    3--4 times higher saliency variance
-    (Table~\ref{tab:correct-rate-bins}), proving that saliency
-    structure is correlated with reasoning reliability.
+\item \textbf{Error localization differs across difficulty levels.}
+GSM8K shows a clear late stage gradient with both quiz failures and weak
+chunks concentrating in the final reasoning step
+(Figure~\ref{fig:positional-analysis-gsm8k-math}). In contrast, MATH
+shows uniformly high failure rates across positions and a symmetric
+first/last weak-chunk distribution. This suggests that easier problems
+tend to fail at integration, whereas harder problems involve multiple
+structural bottlenecks.
 
-\item \textbf{Saliency is most diagnostic in the intermediate
-    difficulty range.}  For problems the model consistently solves
-    (64.6\% perfect-score uniform), saliency provides no actionable
-    information. For consistently failed problems, saliency is
-    degenerate.  The most valuable diagnostic signal lies in the
-    \textasciitilde{}35\% of problems where the model presents
-    partial success, making saliency guided targeted reinforcement
-    (Section~\ref{sec:targeting-weak-chunk}) most impactful for this subset.
+\item \textbf{Saliency structure correlates with reliability.}
+On GSM8K, single dominant problems have the lowest correct rate and
+medium-difficulty problems show 3--4$\times$ higher saliency variance
+(Table~\ref{tab:correct-rate-bins-gsm8k-math}), indicating that uneven
+credit assignment aligns with unstable reasoning. On MATH, saliency
+variance remains high across all difficulty groups, suggesting broader
+structural instability rather than a narrow intermediate diagnostic
+chunk.
 
-\item \textbf{Quiz--exam decoupling reveals hidden credit assignment
-    failures.}  A subset of degenerate items achieves high quiz scores
-    but fails every exam, demonstrating that outcome-only supervision
-    cannot distinguish fundamentally flawed reasoning from correct
-    intermediate reasoning with a faulty final step.
+\item \textbf{Diagnostic value depends on task regime.}
+For GSM8K, saliency is most informative in the intermediate
+difficulty range, where the model partially succeeds and chunk-level
+variation identifies correctable weaknesses. For MATH, diagnostic
+signals are present across difficulty levels, including perfectly
+solved cases, suggesting that on harder tasks, improving performance may require
+strengthening multiple parts of the reasoning process, rather than
+focusing on a single weak chunk.
+
+\item \textbf{Quiz--exam decoupling exposes limitations of outcome-only supervision.}
+Both benchmarks contain degenerate items where quiz scores are high
+but exam performance fails, with more
+common on MATH. This demonstrates that outcome-only supervision cannot
+distinguish globally incorrect reasoning from localized late-stage
+failures, motivating chunk-aware reinforcement strategies.
+
 \end{enumerate}
 
+Overall, saliency analysis enables automated identification of fragile
+reasoning segments without human-annotated intermediate labels. The
+results suggest that targeted reinforcement should be adapted to task
+difficulty. Late stage refinement is for structured, easier benchmarks,
+and broader structural stabilization is for harder reasoning tasks.
 
-Saliency analysis makes it possible to identify which reasoning steps contribute most to the final answer and which ones are weakest. By directing training toward these fragile segments, the model can improve its reasoning without any human-annotated intermediate steps. This supports the central motivation of our approach, that automated quiz and exam feedback is sufficient to diagnose and correct reasoning deficiencies, leading to more robust reasoning behavior.
 
-
-
-
-
-\subsection{Targeted Improvements on Weak Reasoning Chunks}
+\subsection{Reward Reweighting Improvements on Weak Reasoning Chunks}
 \label{sec:weak_chunks}
-
-
 
 
 \chapter{Conclusion and Future work}
@@ -2315,13 +2458,8 @@ practical limitations and open directions for future experiments.
 Although the proposed framework is fully automated and works well in our experiments, it still
 has several limitations worth noting.
 
-\paragraph{Evaluation scope and comparability.}
-For GSM8K and MATH, we evaluate on a randomly sampled subset (200 problems) rather than the
-full official test sets, and we use a unified prompt and answer extraction pipeline across benchmarks.
-This makes the comparisons inside this thesis consistent, but it also means the absolute scores are
-not directly comparable to official leaderboard numbers. In addition, since we evaluate on a sampled subset rather than the full test set, the scores can
-change slightly depending on which problems are sampled. This effect is more noticeable when the
-gap between methods is small.
+\paragraph{Trajectory-level credit assignment limits weak chunk repair.}
+Although weak chunk reward reshaping can increase the selection pressure toward trajectories that contain fragile reasoning segments, GRPO fundamentally operates at the trajectory level with sequence-level rewards. The policy update is driven by relative ranking among complete rollouts rather than by fine-grained credit assignment within individual reasoning chunks. As a result, the method cannot directly repair a specific weak reasoning segment. Instead, it biases the probability mass toward trajectories that achieve higher overall reward. If the rollout distribution does not already contain trajectories that correct the weak segment, the algorithm has no mechanism to generate local repairs. In this sense, weak-chunk targeting under trajectory-level optimization functions as a selection bias rather than a guaranteed repair mechanism.
 
 \paragraph{Quiz alignment is helpful but not perfect.}
 The quiz mechanism improves reward density, but it depends on the quality and alignment of the
@@ -2341,6 +2479,14 @@ signals more impactful.
 An important empirical observation in this thesis is that applying supervised fine-tuning on synthetic
 data can degrade performance relative to the original instruct model. SFT narrows the policy distribution that hurts
 generalization and reduces exploration during GRPO. This effect suggests that ``more training'' is not always better when the starting model is already strong.
+
+\paragraph{Evaluation scope and comparability.}
+For GSM8K and MATH, we evaluate on a randomly sampled subset (200 problems) rather than the
+full official test sets, and we use a unified prompt and answer extraction pipeline across benchmarks.
+This makes the comparisons inside this thesis consistent, but it also means the absolute scores are
+not directly comparable to official leaderboard numbers. In addition, since we evaluate on a sampled subset rather than the full test set, the scores can
+change slightly depending on which problems are sampled. This effect is more noticeable when the
+gap between methods is small.
 
 \paragraph{Compute and engineering constraints.}
 All experiments are conducted under limited hardware resources in a single-GPU setting. As a result, we use
@@ -2378,6 +2524,18 @@ enough to run under realistic compute constraints.
 
 \section{Future Work}
 There are several directions that would meaningfully strengthen and extend this work.
+
+\paragraph{Chunk-level advantage and fine-grained credit assignment.}
+A more fundamental extension is to move beyond trajectory-level optimization and introduce
+chunk-level advantage estimation. Instead of assigning a single scalar reward to the entire rollout,
+one could segment the solution into reasoning chunks and estimate advantages at the chunk level.
+Policy updates would then weight token log-probabilities according to the advantage of the chunk
+they belong to, enabling localized reinforcement or suppression of specific reasoning segments.
+Such a mechanism would directly address the credit assignment limitation identified in this thesis,
+where trajectory-level GRPO functions primarily as a selection bias over complete solutions.
+Implementing chunk-level advantages would require modifications to the training loop, including
+per-chunk reward modeling or value estimation, but it offers a path toward true weak reasoning repair rather than indirect selection.
+
 
 \paragraph{Stronger quiz generation and verification.}
 A natural next step is to improve quiz quality while keeping the pipeline automated. For example,

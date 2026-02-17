@@ -1,0 +1,85 @@
+\begin{document}
+
+
+\subsection{Targeting Weak Chunks with GRPO}
+\label{sec:targeting-weak-chunks}
+
+Given the chunk-level saliency distribution $\{w_j\}_{j=1}^{J}$ defined in Section~\ref{sec:saliency}, we identify reasoning chunks that contribute little to final exam success and selectively reinforce the corresponding training problems during GRPO.  The key idea is to operate entirely at the \emph{reward level}: rather than modifying the GRPO advantage formula or its clipped objective, we adjust the scalar reward returned to the trainer so that problems containing weak reasoning patterns receive amplified reward deviations within each group.  This design keeps the approach compatible with any standard GRPO implementation (e.g., the TRL library's \texttt{GRPOTrainer}) without requiring changes to the optimization loop itself.
+
+\subsubsection{Building the Weak-Chunk Database}
+\label{sec:weak-chunk-db}
+
+The saliency analysis described in Section~\ref{sec:saliency} produces, for every analysed problem, a normalised weight vector $\mathbf{w} = (w_1, \dots, w_J)$ over its $J$ reasoning chunks.  We define a problem as \emph{weak-chunk bearing} if at least one chunk falls below a saliency threshold $\delta$:
+%
+\begin{equation}
+  \mathcal{W}_q \;=\; \bigl\{\, j \;\bigm|\; w_j \le \delta \,\bigr\},
+  \label{eq:weak-set}
+\end{equation}
+%
+where $\delta = 0.10$ in our experiments.  For each such problem $q$, we store a pre-computed \emph{weak-chunk intensity} score
+%
+\begin{equation}
+  \bar{m}_q \;=\; \frac{|\mathcal{W}_q|}{J},
+  \label{eq:m-bar}
+\end{equation}
+%
+which represents the fraction of reasoning chunks classified as weak.  These entries are serialised into a static lookup table (the \emph{weak-chunk database}), keyed by problem identifier.  In our setup, 1{,}000 problems from the combined GSM8K and MATH training sets are flagged as weak-chunk bearing.
+
+The database is constructed \emph{once} as an offline diagnostic step and remains fixed throughout GRPO training.  This static design avoids the computational cost of re-running saliency analysis during training, and ensures that the weak-chunk signal reflects a stable snapshot of the model's reasoning behaviour prior to targeted reinforcement.
+
+\subsubsection{Training Data Preparation}
+\label{sec:weak-chunk-data-prep}
+
+To ensure that the GRPO training set contains sufficient coverage of weak-chunk problems, we augment the standard training pool as follows.  Starting from a randomly sampled set of 5{,}000 training problems, we check whether all 1{,}000 weak-chunk problems are included.  Any missing weak-chunk problems are added from the full training cache, and an equal number of non-weak-chunk problems are removed to maintain the total training set size at 5{,}000.  This guarantees that all identified weak-chunk problems appear during training while preserving overall dataset balance.
+
+\subsubsection{Reward-Level Weak-Chunk Focusing}
+\label{sec:reward-focusing}
+
+During GRPO training, the trainer samples a group of $G$ complete reasoning trajectories $\{o_1, \dots, o_G\} \sim \pi_{\theta_{\mathrm{old}}}(\cdot \mid q)$ for each question $q$.  Each trajectory receives a scalar reward $r_i = R(q, o_i)$ computed from the standard three-component reward function (step bonus, exam reward, and quiz reward) defined in Section~\ref{sec:reward-modeling}.
+
+For questions that appear in the weak-chunk database, we apply a \emph{reward-level focusing} adjustment that amplifies each trajectory's deviation from the group mean:
+%
+\begin{equation}
+  r'_i \;=\; r_i \;+\; \kappa \cdot \bar{m}_q \cdot \bigl(r_i - \mu_{\mathrm{group}}\bigr),
+  \label{eq:reward-focus}
+\end{equation}
+%
+where $\mu_{\mathrm{group}} = \frac{1}{G}\sum_{i=1}^{G} r_i$ is the mean reward within the group, $\bar{m}_q$ is the pre-computed weak-chunk intensity from Equation~\eqref{eq:m-bar}, and $\kappa > 0$ is a focus coefficient.  For problems not in the weak-chunk database, $\bar{m}_q = 0$ and the reward remains unchanged.
+
+The effect of Equation~\eqref{eq:reward-focus} is intuitive: within a group of trajectories for a weak-chunk problem, trajectories that score above the group mean have their reward increased, while those scoring below the mean have their reward decreased.  The magnitude of this shift is proportional to both the focus coefficient $\kappa$ and the fraction of weak chunks $\bar{m}_q$.  Since GRPO computes advantages from the group-normalised rewards, this amplification translates into stronger gradient signals for weak-chunk problems, encouraging the policy to improve on exactly those reasoning patterns that the saliency analysis identified as deficient.
+
+\paragraph{Relationship to advantage scaling.}
+
+An alternative formulation would scale the GRPO advantage directly, for instance as $\hat{A}_i = (1 + \kappa \bar{m}_q) A_i$.  While mathematically similar in effect, the reward-level approach in Equation~\eqref{eq:reward-focus} has a practical advantage: it operates entirely within the reward function callback exposed by standard GRPO implementations, without requiring modification to the trainer's internal advantage computation or clipped objective.  This makes the method straightforward to implement on top of existing libraries.
+
+\subsubsection{Worked Example}
+\label{sec:weak-chunk-example}
+
+Consider a question $q$ with $J = 3$ reasoning chunks and saliency distribution $\mathbf{w} = (0.22,\; 0.53,\; 0.00)$.  Since $w_3 = 0.00 \le \delta = 0.10$, the weak set is $\mathcal{W}_q = \{3\}$ and the weak-chunk intensity is $\bar{m}_q = 1/3 \approx 0.33$.
+
+GRPO samples $G = 3$ trajectories with base rewards $\mathbf{r} = (1.5,\; 0.8,\; 0.3)$, giving $\mu_{\mathrm{group}} = 0.867$.  With $\kappa = 0.5$, the focused rewards become:
+%
+\begin{align}
+  r'_1 &= 1.5 + 0.5 \times 0.33 \times (1.5 - 0.867) = 1.5 + 0.105 = 1.605, \notag\\
+  r'_2 &= 0.8 + 0.5 \times 0.33 \times (0.8 - 0.867) = 0.8 - 0.011 = 0.789, \notag\\
+  r'_3 &= 0.3 + 0.5 \times 0.33 \times (0.3 - 0.867) = 0.3 - 0.094 = 0.206. \label{eq:example-focused}
+\end{align}
+%
+The spread between the best and worst trajectory increases from $1.2$ to $1.399$, so the resulting GRPO advantages will assign a stronger positive gradient to the high-reward trajectory and a stronger negative gradient to the low-reward one.  For non-weak-chunk problems ($\bar{m}_q = 0$), the rewards remain unmodified, and GRPO proceeds with its standard optimisation.
+
+\subsubsection{Summary of the Procedure}
+\label{sec:weak-chunk-summary}
+
+The overall targeting pipeline consists of three stages:
+%
+\begin{enumerate}
+  \item \textbf{Offline saliency analysis.}  Run the chunk-level saliency protocol from Section~\ref{sec:saliency} on a representative sample of training problems, identify weak chunks via Equation~\eqref{eq:weak-set}, and store the weak-chunk intensity $\bar{m}_q$ for each flagged problem in a static database.
+
+  \item \textbf{Training data augmentation.}  Ensure all weak-chunk problems are included in the GRPO training set by padding them into the sampled pool and removing an equal number of non-weak-chunk problems to maintain dataset size.
+
+  \item \textbf{Reward-level focusing during GRPO.}  During training, look up $\bar{m}_q$ for each question in the batch.  For flagged problems, adjust the per-trajectory reward via Equation~\eqref{eq:reward-focus} before returning it to the GRPO trainer.  The trainer then computes advantages, clips the objective, and updates the policy as usual.
+\end{enumerate}
+%
+This design keeps all modifications external to the GRPO optimisation loop, making the approach lightweight to implement and easy to combine with other reward components.
+
+\end{document}
