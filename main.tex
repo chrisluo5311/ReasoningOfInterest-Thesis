@@ -43,7 +43,14 @@
   breakatwhitespace=true,
   columns=fullflexible,
   keepspaces=true,
-  tabsize=2
+  tabsize=2,
+  linewidth=\linewidth,
+  xleftmargin=0pt,
+  xrightmargin=0pt,
+  framexleftmargin=0pt,
+  framexrightmargin=0pt,
+  framesep=6pt,
+  resetmargins=true
 }
 
 %Formatting Setting
@@ -63,6 +70,8 @@
   {\thechapter}
   {1em}   % 章號跟標題之間距離（可改 0.8em / 1.2em）
   {}
+
+
 
 % 控制章標題上下距離：{left}{before}{after}
 \titlespacing*{\chapter}{0pt}{0pt}{1.0em}
@@ -113,7 +122,7 @@
     
     {\elevenpt ENTITLED}\\[1cm]
     
-    {\sixteenpt \textbf{Enhance LLM Math Reasoning with Reinforcement Learning}}\\[1cm]
+    {\sixteenpt \textbf{Enhancing LLM Math Reasoning with Reinforcement Learning}}\\[1cm]
     
     {\tenpt BE ACCEPTED IN PARTIAL FULFILLMENT OF THE REQUIREMENTS FOR THE DEGREE}\\[0.5cm]
     
@@ -128,7 +137,7 @@
         \rule{2.5in}{0.4pt}\\[-0.1cm]
         Thesis Advisor\\[1cm]  
         \rule{2.5in}{0.4pt}\\[-0.1cm]
-        Chairman of Department
+        Chairperson of Department
     \end{minipage}
     \hfill
     \begin{minipage}[t]{0.45\textwidth}
@@ -970,7 +979,7 @@ This chapter presents the experimental setup and evaluation methodology used to 
 \section{Experimental Setup}
 
 \subsection{Data Preparation and Quiz Quality Filtering}
-
+\label{sec:data-prep}
 Reinforcement learning is conducted on a combined training set consisting of GSM8K and MATH, with a total of 14,973 examples. For each problem, GPT-5-mini is used to  generate a small set of intermediate quizzes derived from the original question, with the number of quizzes varying between one and three. To ensure that these quizzes meaningfully target potential reasoning errors rather than superficial cues, we employ GPT-5.2 to implement a three-level quality classification framework. This framework evaluates the alignment between the generated adversarial quizzes and the corresponding original math problems, filtering out low-quality cases.
 
 \begin{enumerate}
@@ -1435,6 +1444,8 @@ and reasoning stability under stochastic decoding.
 & \multicolumn{2}{c}{\textbf{AIME 2024}} \\
 & Pass@1 & Pass@1 & Pass@1 & Pass@5 & Con@64 \\
 \midrule
+\multicolumn{6}{@{}l}{\textit{GRPO Training Data~A: GSM8K + MATH (5{,}000 problems, GPT-5-mini quizzes, verified)}} \\[3pt]
+\midrule
 Qwen2.5-7B (Base) 
 & 22.5 & 35.0 & 33.2 & 0.3 & 0.0 \\
 
@@ -1450,11 +1461,18 @@ Qwen2.5-7B-Instruct-SFT-GRPO
 Qwen2.5-7B-Instruct
 & 87.0 & 47.5 & 46.4 & 13.3 & 10.0 \\
 
-Qwen2.5-7B-Instruct-GRPO (w/o SFT, Quiz, Step)
+Qwen2.5-7B-Instruct-GRPO (w/o Quiz, Step)
 & 89.5 & 47.0 & 47.8 & 6.7 & 0.0 \\
 
-Qwen2.5-7B-Instruct-GRPO (w/o SFT) 
-& \textbf{91.0} & \textbf{53.0} & \textbf{49.0} & \textbf{13.3} & \textbf{10.0} \\
+Qwen2.5-7B-Instruct-GRPO
+& 91.0 & 53.0 & 49.0 & 13.3 & 10.0 \\
+\midrule
+\multicolumn{6}{@{}l}{\textit{GRPO Training Data~B: GSM8K + MATH + AIME (3{,}438 problems, GPT-5.2 quizzes, difficulty-scaled)}} \\[3pt]
+\midrule
+Qwen2.5-7B-Instruct-GRPO-v2 (w/o Quiz, Step)
+& 90.0 & 67.5 & 69.4 & 10.0 & 10.0 \\
+Qwen2.5-7B-Instruct-GRPO-v2
+& \textbf{92.0} & \textbf{69.0} & \textbf{71.0} & 13.3 & 10.0 \\
 \bottomrule
 \end{tabular}%
 }
@@ -2424,8 +2442,7 @@ focusing on a single weak chunk.
 
 \item \textbf{Quiz--exam decoupling exposes limitations of outcome-only supervision.}
 Both benchmarks contain degenerate items where quiz scores are high
-but exam performance fails, with more
-common on MATH. This demonstrates that outcome-only supervision cannot
+but exam performance fails. This shows that outcome only supervision cannot
 distinguish globally incorrect reasoning from localized late-stage
 failures, motivating chunk-aware reinforcement strategies.
 
@@ -2440,6 +2457,94 @@ and broader structural stabilization is for harder reasoning tasks.
 
 \subsection{Reward Reweighting Improvements on Weak Reasoning Chunks}
 \label{sec:weak_chunks}
+
+%% ============================================================================
+%% NEW TABLE: Dataset comparison (Training Data A vs B)
+%% Place this in Section 4.3.7 or as a companion to Table 4.1
+%% ============================================================================
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}l cc@{}}
+\toprule
+\textbf{Property} & \textbf{Data~A (original)} & \textbf{Data~B (difficulty-scaled)} \\
+\midrule
+Source datasets        & GSM8K, MATH              & GSM8K, MATH, AIME (1983--2023) \\
+Total problems         & 5{,}000                  & 3{,}438 \\
+Total quizzes          & $\sim$14{,}500           & 13{,}680 \\
+Mean quizzes / problem & 2.9                      & 3.98 \\
+Quiz count range       & 1--3 (fixed)             & 2--7 (difficulty-scaled) \\
+Quiz generator         & GPT-5-mini               & GPT-5.2 \\
+Quality verification   & GPT-5.2 (3-level filter) & None (single-pass generation) \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Data~B: Breakdown by difficulty tier}} \\[2pt]
+\quad Easy (GSM8K + MATH L1--2)    & --- & 1{,}333 problems, 2.0 quizzes/prob \\
+\quad Medium (MATH L3)             & --- & 385 problems, 3.0 quizzes/prob \\
+\quad Hard (MATH L4--5)            & --- & 824 problems, 4.7 quizzes/prob \\
+\quad Competition (AIME)           & --- & 896 problems, 6.7 quizzes/prob \\
+\bottomrule
+\end{tabular}
+\caption{Comparison of training data configurations. Data~A uses a larger problem set with fixed quiz counts and post-hoc quality filtering. Data~B uses a smaller, difficulty-stratified problem set with more quizzes per problem and a stronger quiz generator, but omits explicit quality verification.}
+\label{tab:dataset-comparison}
+\end{table}
+
+%% ============================================================================
+%% NEW SECTION 4.3.7 — Insert after Section 4.3.6
+%% ============================================================================
+
+\subsection{Extended Experiment: Difficulty Aware Quiz Generation}
+\label{sec:difficulty-aware}
+
+The experiments described in Sections~4.3.1 through 4.3.6 use Data A which GPT-5-mini produces three quizzes per problem, followed by a quality verification using GPT-5.2 (Section~\ref{sec:data-prep}). While this pipeline produces well filtered quizzes, it treats all problems uniformly regardless of their reasoning complexity. In this section, we explore whether an improved quiz generation strategy, combined with a broader difficulty distribution, can further enhance model's performance.
+
+\paragraph{Motivation.}
+The saliency analysis in Section~\ref{sec:saliency_chunks} reveals that chunk-level reasoning failures are more prevalent on harder benchmarks, and that quiz rewards are more informative at intermediate to hard difficulty levels. 
+This observation motivates a difficulty aware quiz design. Problems that require longer reasoning chains should be accompanied by more intermediate checkpoints, while simple arithmetic problems need only a few. Additionally, the original training set draws exclusively from GSM8K and MATH, leaving competition-level reasoning (e.g., AIME problems) entirely unrepresented during training.
+
+%% ============================================================================
+%% FIGURE REFERENCE — You already have difficulty_quizzes_stats.png
+%% Add this where appropriate (near the new section)
+%% ============================================================================
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.75\textwidth]{Image/difficulty_quizzes_stats.png}
+\caption{Distribution of problems and mean quizzes per problem across difficulty tiers in Data~B. The number of quizzes scales with problem difficulty, from 2 quizzes for easy problems to 7 for competition-level problems.}
+\label{fig:difficulty-quizzes}
+\end{figure}
+
+
+\paragraph{Difficulty Aware Quiz Generation Pipeline.}
+We construct a new training dataset (Data~B) that differs from the original (Data~A) in three key respects. First, we extend the training distribution to include AIME problems from 1983 to 2023, providing 896 competition-level examples alongside GSM8K (897 problems) and MATH (1{,}645 problems across all five difficulty levels). Second, we replace GPT-5-mini with GPT-5.2 as the quiz generator, using difficulty specific prompts (\ref{app:quiz-gen-v2-user}) that include chain-of-thought reasoning instructions and few-shot examples tailored to each difficulty tier. Third, we scale the number of quizzes according to the difficulty of the problem. Easy problems are up to 2~quizzes, medium problems up to 3, hard problems up to 5, and competition-level problems up to 7. Each quiz is designed to target a single intermediate computation or transformation.
+
+Table~\ref{tab:dataset-comparison} summarizes the differences between the two data configurations. The resulting Data~B corpus contains 3{,}438 problems paired with 13{,}680 quizzes, averaging 3.98 quizzes per problem. Despite containing fewer problems than Data~A (3{,}438 vs.\ 5{,}000), Data~B provides a comparable total number of quiz-level training instances and substantially denser intermediate supervision for harder problems. Figure~\ref{fig:difficulty-quizzes} shows the distribution of problems and mean quiz counts across difficulty tiers.
+
+Unlike Data~A, Data~B does not include an explicit quality verification step. Because GPT-5.2 is used directly as the quiz generator (rather than the weaker GPT-5-mini), we hypothesize that the stronger model produces sufficiently well-aligned quizzes without requiring post-hoc verification. This simplifies the pipeline to a single-pass generation, though it introduces the risk that some quizzes may be misaligned or trivially restate the final question.
+
+\paragraph{Training Configuration.}
+We apply the same GRPO training procedure as in Section~\ref{sec:rl-procedure}, using Qwen2.5-7B-Instruct as the backbone without supervised fine-tuning initialization. All hyperparameters, including learning rate ($1 \times 10^{-6}$), group size ($G = 3$), generation length, KL coefficient ($\beta = 0.01$), and reward design (exam + quiz + step bonus) remain identical to the main experiment. The only difference is the training data.
+
+\paragraph{Results.}
+Table~\ref{tab:grpo_three_models} reports the performance of the model trained on Data~B (denoted Qwen2.5-7B-Instruct-GRPO-v2). The most striking improvements appear on the harder benchmarks. On MATH, Pass@1 increases from 53.0\% to 69.0\% (+16.0~pp), and on MATH500 from 49.0\% to 69.4\% (+20.4~pp). Pass@5 on MATH reaches 80.0\% and on MATH500 reaches 81.6\%, indicating that the model not only answers correctly more often under greedy decoding but also generates correct solutions more reliably across multiple samples.
+
+On GSM8K, performance reaches 92.0\%, a slight improvement of 1.0~pp over the Data~A model (91.0\%). This confirms that the difficulty-scaled quiz strategy does not sacrifice easy benchmark accuracy despite the reduced proportion of GSM8K problems in the training distribution (897 out of 3{,}438 in Data~B).
+
+On AIME~2024, the model achieves Pass@5 of 13.3\% and Con@64 of 10.0\%, which exactly matches the Data~A model. This indicates that the improved quiz generation pipeline preserves competition-level reasoning capability while substantially improving performance on intermediate-difficulty benchmarks.
+
+\paragraph{Analysis.}
+Multiple factors change simultaneously between Data~A and Data~B, including the quiz generator model, the scaling of the quiz count, the composition of the training data, and the absence of quality filtering. Hence, the improvements cannot be attributed to any single factor in isolation. However, several observations are informative.
+
+The disproportionate gains on harder benchmarks (MATH and MATH500) relative to easier ones (GSM8K) are consistent with the hypothesis that difficulty-scaled quiz density provides more effective intermediate supervision where it matters most. On easy problems, two quizzes already capture the full reasoning chain. Adding more on them would provide redundant signal. On hard and competition-level problems, however, the additional checkpoints decompose long reasoning chains into finer sub-steps, providing denser credit assignment that GRPO can leverage during policy optimization.
+
+The inclusion of AIME training data does not translate into AIME~2024 test gains, which may reflect the well-known difficulty of competition-level generalization. AIME problems from different years vary substantially in the specific mathematical techniques they require, and the 30-problem test set is too small to detect moderate improvements reliably.
+
+The fact that a smaller training set (3{,}438 vs.\ 5{,}000 problems) produces substantially better results suggests that quiz quality and density may be more important than raw problem count for quiz-augmented reinforcement learning. This finding aligns with the broader trend in the RL literature that the informativeness of reward signals often matters more than the volume of training data.
+
+\paragraph{Limitations of This Comparison.}
+We emphasize that the comparison between Data~A and Data~B is not a controlled ablation. Multiple variables differ between the two configurations, and we cannot isolate the contribution of each. A rigorous decomposition would require additional experiments such as using GPT-5.2 as the generator on the original Data~A problem set with fixed quiz counts, or applying the difficulty-scaled quiz strategy with GPT-5-mini. These ablations are left for future work due to computational constraints. The results reported here should therefore be interpreted as evidence that the combined pipeline improvements yield large gains, rather than as a causal claim about any individual component.
+
+
 
 
 \chapter{Conclusion and Future work}
@@ -2601,10 +2706,14 @@ both within mathematics and beyond.
 % Fix weird ".1" section numbering in appendix
 \renewcommand{\thesection}{A.\arabic{section}}
 \titleformat{\section}{\normalfont\bfseries}{\thesection}{1em}{}
+% Make \paragraph align with normal paragraph indentation
+\titleformat{\paragraph}[block]{\bfseries}{ }{0pt}{}
+\titlespacing*{\paragraph}{0pt}{0.6\baselineskip}{0.4\baselineskip}
+
 \chapter{Appendix}
 \section{Prompt Template for Solution Generation}
 \label{app:prompt}
-\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single]
+\begin{lstlisting}
 You are a careful math and logic reasoning assistant.
 You must first think step by step, and then give a final concise answer
 that directly matches what the question is asking for.
@@ -2661,7 +2770,7 @@ Now follow the same style for the new question.
 \section{Prompt Template for Quiz Answering}
 \label{app:quiz-prompt}
 
-\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single, breaklines=true, breakatwhitespace=true]
+\begin{lstlisting}
 [User Question]
 {question}
 [/User Question]
@@ -2722,6 +2831,271 @@ You judge whether quizzes align with a math word problem.
 Be conservative. Do NOT solve the whole problem.
 If a quiz essentially restates the original question's final goal 
 (e.g., asks for the same final quantity), label it as "ok_final" even if it is grounded and useful.
+\end{lstlisting}
+
+%% ============================================================================
+%% APPENDIX: Difficulty-Aware Quiz Generation Prompts (Data B)
+%%
+%% Insert these sections into your Appendix chapter, after the existing
+%% A.3 (Quiz Generation) and A.4 (Quiz-Question Alignment) sections.
+%% Adjust section numbering (A.5, A.6, ...) to match your document.
+%% ============================================================================
+\section{Prompt Template for Difficulty-Aware Quiz Generation (System Instruction)}
+\label{app:quiz-gen-v2-system}
+
+The following system instruction is shared across all difficulty tiers and is passed as the system message to GPT-5.2.
+
+\begin{lstlisting}
+You are an expert math educator designing intermediate quiz
+checkpoints. Output ONLY valid JSON. No markdown, no code fences,
+no explanations outside the JSON.
+\end{lstlisting}
+
+\section{Prompt Template for Difficulty-Aware Quiz Generation (User Prompt)}
+\label{app:quiz-gen-v2-user}
+
+The user prompt is constructed dynamically based on the problem's difficulty tier. It consists of five components: (1)~a difficulty-specific instruction block, (2)~answer format rules shared across all tiers, (3)~an ordering constraint enforcing sequential quiz dependencies, (4)~a one-shot example matching the difficulty tier (see Appendices~\ref{app:fewshot-easy}--\ref{app:fewshot-competition}), and (5)~the target problem and its correct solution. The template below uses placeholders \texttt{\{DIFFICULTY\}}, \texttt{\{DIFFICULTY\_INSTRUCTION\}}, \texttt{\{FEW\_SHOT\_EXAMPLE\}}, \texttt{\{QUESTION\}}, and \texttt{\{EXAM\_ANSWER\}} which are filled at generation time.
+
+\begin{lstlisting}
+You are an expert math educator. Your task is to generate
+intermediate quiz checkpoints for a math problem so that a
+language model can use them as a step-by-step reasoning scaffold.
+
+## Difficulty level: {DIFFICULTY}
+{DIFFICULTY_INSTRUCTION}
+
+## Answer format rules (STRICT)
+Each quiz answer must be exactly ONE of:
+  (A) A number -- integer or decimal, no words (e.g., "42", "3.14").
+  (B) A multiple-choice letter -- A, B, C, or D.
+  (C) A single-line formula -- using only variables, numbers, and
+      operators + - * / ^ ( ) with no natural-language sentences
+      (e.g., "n^2+2n+1").
+
+DO NOT generate:
+  - Questions asking "what operation should we use" or
+    "what is the next step".
+  - Questions whose answers are full sentences or explanations.
+  - Questions that merely restate the final exam question.
+
+## Ordering constraint
+Quizzes must be ordered so that answering Quiz k helps answer
+Quiz k+1. The last quiz should be the closest prerequisite to
+the final answer, but must NOT directly ask for the final answer
+itself.
+
+## Output format (strict JSON)
+{
+  "reasoning": "<One paragraph explaining which intermediate
+                 values you chose and why they form a sequential
+                 scaffold>",
+  "quizzes": [
+    {"question": "...", "answer": "..."},
+    ...
+  ]
+}
+
+---
+
+{FEW_SHOT_EXAMPLE}
+
+---
+
+Now generate quizzes for the following problem.
+
+Problem:
+{QUESTION}
+
+Correct solution:
+{EXAM_ANSWER}
+\end{lstlisting}
+
+
+\noindent The difficulty-specific instruction block \texttt{\{DIFFICULTY\_INSTRUCTION\}} varies across tiers as follows. 
+In each case, \texttt{\{n\}} is replaced by the maximum quiz count for that tier (Easy: 2, Medium: 3, Hard: 5, Competition: 7).
+
+\paragraph{Easy (GSM8K, MATH Level 1--2; $n = 2$).}
+\noindent\begin{lstlisting}
+The problem requires only a few arithmetic steps. Generate up to
+{n} quizzes that each capture one key intermediate value. Quizzes
+should be solvable in sequence so that answering all of them
+leaves no ambiguity about how to reach the final answer.
+\end{lstlisting}
+
+\paragraph{Medium (MATH Level 3; $n = 3$).}
+\noindent\begin{lstlisting}
+The problem involves multiple conceptual steps (algebraic
+manipulation, formula application, or combinatorial reasoning).
+Generate up to {n} quizzes ordered so that each quiz's answer is
+a prerequisite for the next. Together they should reconstruct the
+solution path.
+\end{lstlisting}
+
+\paragraph{Hard (MATH Level 4--5; $n = 5$).}
+\noindent\begin{lstlisting}
+The problem demands several non-trivial transformations. Generate
+up to {n} quizzes that decompose the solution into a sequential
+reasoning chain. Each quiz must target exactly one critical
+sub-result; none of them should be answerable by guessing or
+pattern-matching alone.
+\end{lstlisting}
+
+\paragraph{Competition (AIME; $n = 7$).}
+\noindent\begin{lstlisting}
+This is a competition-level problem (e.g., AIME). The solution
+likely involves multiple mathematical insights chained together.
+Generate up to {n} quizzes that form a step-by-step derivation
+scaffold. A model that correctly answers all quizzes in order
+should be able to infer the final answer with minimal additional
+reasoning. Prefer quizzes about intermediate symbolic expressions
+and numeric computations over conceptual questions.
+\end{lstlisting}
+
+\section{Few-Shot Example for Easy Difficulty}
+\label{app:fewshot-easy}
+
+\begin{lstlisting}
+### Example (Easy -- GSM8K style)
+
+Problem:
+Rachel is twice as old as Rona and Collete's age is half Rona's.
+Rona is 8 years old.
+What is the difference between Collete's age and Rachel's age?
+
+Correct solution:
+Rachel's age = 8 x 2 = 16.
+Collete's age = 8 / 2 = 4.
+Difference = 16 - 4 = 12.
+
+Good quizzes (2 checkpoints tracing the solution path):
+{
+  "reasoning": "Step 1 produces Rachel's age (16); Step 2
+   produces Collete's age (4). Both sub-results are needed
+   before the final subtraction.",
+  "quizzes": [
+    {"question": "What is Rachel's age in years?",
+     "answer": "16"},
+    {"question": "What is Collete's age in years?",
+     "answer": "4"}
+  ]
+}
+\end{lstlisting}
+
+
+\section{Few-Shot Example for Medium Difficulty}
+\label{app:fewshot-medium}
+
+\begin{lstlisting}
+### Example (Medium -- MATH Level 3)
+
+Problem:
+How many integers n satisfy 3 <= n <= 10 and 121 base-n is a
+perfect square?
+
+Correct solution:
+121 in base n = n^2 + 2n + 1 = (n+1)^2. It is always a perfect
+square for any valid base >= 3.
+All integers from 3 to 10 inclusive: 10 - 3 + 1 = 8.
+
+Good quizzes (3 checkpoints):
+{
+  "reasoning": "Quiz 1 checks the algebraic expansion. Quiz 2
+   confirms the factoring. Quiz 3 counts the valid range.",
+  "quizzes": [
+    {"question": "Express 121 in base n as a polynomial in n.",
+     "answer": "n^2+2n+1"},
+    {"question": "Factor n^2 + 2n + 1.",
+     "answer": "(n+1)^2"},
+    {"question": "How many integers are in the range 3 to 10
+      inclusive?",
+     "answer": "8"}
+  ]
+}
+\end{lstlisting}
+
+
+\section{Few-Shot Example for Hard Difficulty}
+\label{app:fewshot-hard}
+
+\begin{lstlisting}
+### Example (Hard -- MATH Level 5)
+
+Problem:
+Find the number of ordered pairs (a, b) of positive integers
+such that lcm(a, b) = 2^3 * 3^2 * 5^1.
+
+Correct solution:
+For each prime p^k in the lcm, pairs (x, y) with max(x,y) = k
+satisfy (k+1)^2 - k^2 = 2k+1 choices, plus the standard formula:
+number of pairs = prod(2e_i + 1).
+For 2^3: 2(3)+1=7. For 3^2: 2(2)+1=5. For 5^1: 2(1)+1=3.
+Total = 7 x 5 x 3 = 105.
+
+Good quizzes (5 checkpoints):
+{
+  "reasoning": "Each quiz isolates one critical sub-computation.
+   Together they form a sequential reasoning chain that
+   culminates in the final product.",
+  "quizzes": [
+    {"question": "Using the formula 2e+1 for prime 2^3, what is
+      the count of valid exponent pairs for 2?",
+     "answer": "7"},
+    {"question": "Using the formula 2e+1 for prime 3^2, what is
+      the count of valid exponent pairs for 3?",
+     "answer": "5"},
+    {"question": "Using the formula 2e+1 for prime 5^1, what is
+      the count of valid exponent pairs for 5?",
+     "answer": "3"},
+    {"question": "What is 7 x 5?",
+     "answer": "35"},
+    {"question": "What is the total number of ordered pairs
+      (a, b)?",
+     "answer": "105"}
+  ]
+}
+\end{lstlisting}
+
+
+\section{Few-Shot Example for Competition Difficulty}
+\label{app:fewshot-competition}
+
+\begin{lstlisting}
+### Example (Competition -- AIME style)
+
+Problem:
+Let log_x(w) = 24, log_y(w) = 40, log_{xyz}(w) = 12.
+Find log_z(w).
+
+Correct solution:
+Let log_z(w) = t. Using 1/log_x(w) = log_w(x), we get:
+1/24 + 1/40 + 1/t = 1/12.
+1/24 + 1/40 = 5/120 + 3/120 = 8/120 = 1/15.
+1/t = 1/12 - 1/15 = 5/60 - 4/60 = 1/60.
+t = 60.
+
+Good quizzes (6 checkpoints, forming a sequential derivation
+chain):
+{
+  "reasoning": "Each quiz targets exactly one algebraic
+   manipulation. A model that answers all of them has essentially
+   reconstructed the full proof.",
+  "quizzes": [
+    {"question": "Using the change-of-base identity, rewrite
+      1/log_x(w) in terms of log_w.",
+     "answer": "log_w(x)"},
+    {"question": "Express the equation log_{xyz}(w)=12 as an
+      equation involving 1/log_x(w), 1/log_y(w), 1/log_z(w).",
+     "answer": "1/24+1/40+1/log_z(w)=1/12"},
+    {"question": "Compute 1/24 + 1/40 as a fraction in lowest
+      terms.",
+     "answer": "1/15"},
+    {"question": "Solve 1/15 + 1/log_z(w) = 1/12 for
+      1/log_z(w).",
+     "answer": "1/60"},
+    {"question": "What is log_z(w)?",
+     "answer": "60"}
+  ]
+}
 \end{lstlisting}
 
 
