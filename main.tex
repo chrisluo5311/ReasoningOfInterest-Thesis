@@ -360,7 +360,7 @@ Process supervision partially addresses this issue by training models on annotat
   \label{fig:competition_math_difficulty}
 \end{figure}
 
-The MATH data set provides mathematical problems at the competition-level with step-by-step solutions. As shown in Figure~\ref{fig:competition_math_difficulty}, higher difficulty levels (especially level 5) account for the largest share of problems, while level 1 is relatively rare. This imbalance means the training set is dominated by challenging examples, which contributes to low baseline pass rates and makes optimization harder, particularly in early training. In contrast, GSM8K contains 7,473 grade-school math word problems that typically require fewer reasoning steps and exhibit a lower difficulty. Mixing datasets with such differing complexity levels introduces an imbalance, as over-emphasizing easier GSM8K examples may encourage superficial reasoning strategies, whereas placing too much weight on MATH early in training can destabilize optimization and hinder learning progress.
+The MATH data set provides mathematical problems at the competition-level with step-by-step solutions. As shown in Figure~\ref{fig:competition_math_difficulty}, higher difficulty levels (especially level 5) account for the largest share of problems, while level 1 is relatively rare. This imbalance means the training set is dominated by challenging examples, which contributes to low baseline pass rates and makes optimization harder, particularly in early training. In contrast, GSM8K contains 7,473 grade-school math word problems that typically require fewer reasoning steps and exhibit a lower difficulty. Mixing datasets with such differing complexity levels introduces an imbalance, as over emphasizing easier GSM8K examples may encourage superficial reasoning strategies, whereas placing too much weight on MATH early in training can destabilize optimization and hinder learning progress.
 
 \subsection{Misalignment between Quizzes and Real Problems}
 Beyond the difficulty of the data set, the misalignment of the generated quizzes also play a critical role. If intermediate quizzes are not well aligned with the according problem difficulty or reasoning requirements, the model may receive reward signals that are irrelevant to solving the original task, leading to unreal or misdirected learning. 
@@ -432,14 +432,14 @@ agent-based decision making.
 
 
 \chapter{Related Work}
-\section{Outcome vs. Process Supervision}
+\section{Outcome and Process Supervision}
 Most early approaches to mathematical reasoning in large language models rely on outcome supervision, where training optimizes only the correctness of the final answer. While simple and scalable, this paradigm provides no direct feedback on intermediate reasoning steps, allowing models to rely on shallow patterns that do not generalize well to harder problems.
 
 The work “Let’s Verify Step by Step"\cite{lightman2023letsverifystepstep} introduces process supervision, which evaluates and rewards intermediate reasoning steps rather than only final outcomes. By training a verifier to assess step-by-step reasoning traces, the authors show that guiding the reasoning trajectory itself leads to substantial performance gains on challenging benchmarks such as MATH. This demonstrates that training objectives strongly influence reasoning behavior, and that step-level feedback can significantly improve long-horizon reasoning.
 
 Despite its effectiveness, process supervision depends on human-annotated reasoning traces, which are costly to collect and difficult to scale across domains. Annotation quality may also introduce stylistic biases. These limitations motivate the search for automated step-level supervision mechanisms that preserve the benefits of process supervision while maintaining the scalability of outcome-based training.
 
-\section{Pure Reinforcement Learning Approaches}
+\section{Reinforcement Learning Without Supervised Fine-Tuning}
 While process supervision augments outcome supervision with explicit step-level signals, an alternative line of work investigates whether reinforcement learning alone can induce reasoning behaviors without any supervised fine-tuning or annotated chains of thought. DeepSeek-R1 represents a prominent example of this direction.
 
 DeepSeek-R1 demonstrates that large-scale reinforcement learning from outcome-based rewards can lead to the emergence of complex reasoning behaviors, including multi-step planning, self-verification, and error correction\cite{Guo_2025}. Notably, the model is trained without supervised fine-tuning on reasoning datasets or explicit process supervision. Instead, it relies on carefully designed reward signals and large-scale policy optimization to shape behavior.
@@ -450,7 +450,7 @@ However, pure RL approaches come with important trade-offs. They typically requi
 
 In contrast to DeepSeek-R1, this thesis adopts a hybrid approach: supervised fine-tuning provides a strong initialization, while reinforcement learning refines reasoning behavior through structured but automated step-level signals. Rather than relying on emergent reasoning alone, we aim to explicitly guide reasoning at the step level without resorting to human annotation or large-scale reward models.
 
-\section{Math-Shepherd: Verify and Reinforce LLMs Step-by-Step without Human Annotations}
+\section{Verification Guided Monte Carlo Tree Search}
 Math-Shepherd is one of the most closely related works to this thesis, as it proposes a framework for step-by-step reasoning supervision without human-annotated chains of thought\cite{wang2024mathshepherdverifyreinforcellms}. Instead of relying on manual annotations, Math-Shepherd combines automatic verification with Monte Carlo Tree Search (MCTS) to construct step-level training signals for reinforcement learning.
 
 Math-Shepherd formulates reasoning as a tree-structured search problem, where each node corresponds to a partial reasoning state. Using MCTS, the method explores multiple reasoning trajectories by iteratively expanding candidate steps, evaluating them with a verifier, and propagating step-level values back through the search tree. This process produces a process-level reward signal that reflects the quality of intermediate reasoning steps rather than only final outcomes. The resulting signals are then used to reinforce the policy, enabling more precise credit assignment across reasoning steps.
@@ -461,21 +461,12 @@ However, this approach introduces substantial computational and architectural co
 
 In contrast, this thesis explores a simpler reinforcement learning framework that avoids explicit tree search and separate reward model training. Rather than performing MCTS over reasoning trajectories, we generate lightweight intermediate quizzes to probe partial reasoning states and selectively reinforce weak reasoning segments. This design preserves the core insight of Math-Shepherd, which is step-level feedback is critical for reasoning, while prioritizing simplicity, robustness, and ease of integration into standard policy optimization pipelines.
 
-% \section{Reinforcement Learning for Reasoning in Small LLMs: What Works and What Doesn’t}
-% Recent work on reinforcement learning for reasoning has largely focused on large-scale models, often obscuring the practical limitations faced by smaller LLMs. The study “Reinforcement Learning for Reasoning in Small LLMs: What Works and What Doesn’t” systematically investigates which reinforcement learning techniques are effective under tight compute and data constraints.
-
-% This work evaluates a range of RL strategies on relatively small models, demonstrating that many techniques successful at scale fail to transfer directly. In particular, complex reward models, dense supervision, and aggressive optimization often lead to instability or negligible gains. Instead, the authors find that simple reward designs, careful curriculum selection, and selective reinforcement are critical for improving reasoning performance in smaller models.
-
-% This study showed us that reward simplicity and alignment matter more than expressiveness when resources are limited. Overly complex reward functions increase the risk of reward hacking and optimization instability, while simpler rewards and properly aligned can still produce meaningful reasoning improvements.
-
-% This finding strongly aligns with the design philosophy of this thesis. By using lightweight step bonuses, final-answer rewards, and automatically generated quiz rewards, we prioritize robustness and scalability over reward model complexity. Additionally, our strategy of cherry-picking weak reasoning chunks echoes the study’s emphasis on targeted reinforcement as a practical mechanism for improving reasoning under constrained settings.
-
-\section{R1-Searcher: Incentivizing the Search Capability in LLMs via Reinforcement Learning}
+\section{Incentivizing Search Behavior via Reinforcement Learning}
 R1-Searcher investigates how reinforcement learning can be used to explicitly incentivize search behaviors in large language model\cite{song2025r1searcherincentivizingsearchcapability}. Rather than focusing solely on final answer correctness, the work emphasizes the importance of intermediate exploration steps, showing that structured search policies can emerge when models are rewarded for effective information gathering and reasoning progression.
 
 This work is closely related to our thesis in its recognition that reasoning is a sequential decision-making process, where intermediate actions critically influence final outcomes. However, R1-Searcher primarily targets retrieval and search efficiency, whereas our work focuses on improving internal reasoning quality through quiz-based intermediate evaluation. Both approaches highlight the importance of shaping intermediate behaviors via reinforcement learning rather than relying on outcome-only rewards.
 
-\section{Agent Lightning: Training General-Purpose Agents with Reinforcement Learning}
+\section{Reinforcement Learning under POMDP}
 Agent Lightning presents a general framework for training AI agents using reinforcement learning under a Partially Observable Markov Decision Process (POMDP) formulation\cite{luo2025agentlightningtrainai}. The work emphasizes modular reward design, long-horizon optimization, and scalability across tasks.
 
 This perspective directly informs the theoretical framing of our work. By treating reasoning as a sequential decision process with partial observability, Agent Lightning provides a conceptual foundation for our quiz–exam reward structure and chunk-level saliency analysis. Our work can be viewed as a specialization of this agent-centric view, where the environment is a reasoning task and rewards are derived from intermediate quizzes and final answer evaluation.
@@ -520,7 +511,7 @@ results.
 
 
 \chapter{Methodology}
-This section presents the training pipeline used to improve step-by-step mathematical reasoning in large language models. We first apply Low-Rank Adaptation (LoRA) with supervised fine-tuning on a synthetic mathematics dataset (MetaMathQA) to obtain a strong initialization. After merging the LoRA parameters into the base model, reinforcement learning is applied to further refine reasoning behavior using automatically computed rewards. The proposed methodology emphasizes sequence-level optimization, scalable reward design, and targeted reinforcement of reasoning quality without relying on human-annotated intermediate steps.
+This section presents the training pipeline used to improve step-by-step mathematical reasoning in large language models. We first apply Low-Rank Adaptation (LoRA) with supervised fine-tuning on a synthetic mathematics dataset (MetaMathQA) to obtain a strong initialization. After merging the LoRA parameters into the base model, reinforcement learning is applied to further refine reasoning behavior with intermediate quiz rewards and step bonus. The proposed methodology emphasizes sequence-level optimization, scalable reward design, and targeted reinforcement of reasoning quality without relying on human-annotated intermediate steps.
 
 \section{Parameter-Efficient Adaptation with LoRA}
 To efficiently adapt large language models for mathematical reasoning, we employ Low-Rank Adaptation (LoRA) during the supervised fine-tuning stage. LoRA injects trainable low-rank matrices into selected linear layers while keeping the base model parameters frozen, significantly reducing memory usage and training cost.
@@ -542,14 +533,11 @@ where $A \in \mathbb{R}^{d \times r}$ and $B \in \mathbb{R}^{r \times k}$ and ra
 \section{Model Initialization and Supervised Fine-Tuning}
 We initialize our models Qwen2.5-7B\cite{qwen2025qwen25technicalreport} using supervised fine-tuning on MetaMathQA, a synthetic dataset containing step-by-step mathematical solutions.
 
-During SFT, only LoRA parameters are optimized, while the base model remains frozen. Training minimizes the standard cross-entropy loss over the entire generated sequence, encouraging the model to produce structured reasoning steps followed by a concise final answer.
-
 To improve training stability and hardware efficiency, we employ dynamic sequence padding with padding aligned to multiples of 8 and mask padded tokens using a label value of $-100$. We use a per-device batch size of 8 with gradient accumulation over 8 steps, resulting in an effective batch size of 64. The learning rate is set to $1 \times 10^{-4}$ with a warmup ratio of 0.05, and training is conducted for 3 epochs. All experiments are performed in \texttt{bfloat16} precision with gradient norm clipping at 1.0 to prevent instability.
-
-After SFT converges, the LoRA adapters are merged into the base model weights, yielding a single consolidated checkpoint. This merged model is then used as the initialization policy for subsequent reinforcement learning with GRPO\cite{shao2024deepseekmathpushinglimitsmathematical}.
+After SFT converges, the LoRA adapters are merged into the base model weights, yielding a single consolidated checkpoint. 
 
 \section{Reinforcement Learning Algorithm}
-After merging LoRA weights into the base model, we apply reinforcement learning using Group Relative Policy Optimization (GRPO). At this stage, all model parameters are trainable, and optimization is performed via full-parameter tuning. Given a question $q$, GRPO samples a group of $G$ complete outputs:
+After merging LoRA weights into the base model, we apply reinforcement learning using Group Relative Policy Optimization (GRPO). Given a question $q$, GRPO samples a group of $G$ complete outputs:
 \begin{align}
 o_1, o_2, \ldots, o_G 
 &\sim \pi_{\theta_{\text{old}}}(\cdot \mid q).
@@ -724,11 +712,9 @@ incorrectly. If no quizzes are defined for a problem, we set $r_{\text{quiz}} = 
 \label{sec:training-templates}
 To ensure consistent and parseable reasoning behavior, we define fixed prompt templates for all stages of the pipeline. The exact templates are provided in Appendix \ref{app:prompt}–~\ref{app:quiz-question-alignment}.
 
-\paragraph{Solution generation (Appendix~\ref{app:prompt}).}
-The model is instructed to produce explicit reasoning steps (e.g., ``Step~1'', ``Step~2'', \ldots) followed by a single final answer in a strict \texttt{<final\_answer>} tag. This structure enables reliable extraction of both step boundaries for chunk-level evaluation and final answers scoring.
-
-\paragraph{Quiz answering (Appendix~\ref{app:quiz-prompt}).}
-Given an original question, a partial reasoning chunk, and a quiz, the model outputs only a short answer token (e.g., a number or letter) with no additional reasoning. This ensures answers are grounded in the provided chunk and directly comparable to gold answers.
+\paragraph{Exam and quiz answering (Appendix~\ref{app:prompt}, Appendix~\ref{app:quiz-prompt}).}
+For exam solution, the model is instructed to produce clear reasoning steps (e.g., `Step~1'', `Step~2'', \ldots) followed by a single final answer in a strict \texttt{<final\_answer>} tag. 
+This structure enables reliable extraction of step boundaries for chunk-level evaluation as well as accurate final answer scoring. For quiz answering, given the original question, a partial reasoning chunk, and a quiz, the model outputs only a short answer token (e.g., a number or letter) without additional reasoning, ensuring that answers are grounded in the provided chunk and directly comparable to gold answers.
 
 \paragraph{Quiz generation (Appendix~\ref{app:quiz-generation-prompt}).}
 Quizzes are generated based on the original problem and its correct solution. The prompt requires that quizzes target numerical or symbolic checkpoints, produce short unambiguous answers, and output in JSON format for automatic parsing.
@@ -793,184 +779,150 @@ w = [0.34,\ 0.06,\ 0.58].
 
 \noindent\textbf{Interpretation.}
 Chunk 3 contributes $\approx 60\%$ of the exam success, chunk 1 contributes $\approx 34\%$,
-and chunk 2 only $\approx 6\%$, indicating that chunk 2 is the weakest part of the reasoning trace.
+and chunk 2 only $\approx 6\%$, indicating that chunk 2 has the weakest relationship with final answer in the reasoning trace.
 
 
-\section{Saliency-Guided Reward Reweighting in GRPO}
-\label{sec:targeting-weak-chunk}
+\section{Online Saliency Guided Token Reweighting in GRPO}
+\label{sec:online-saliency-grpo}
 
-Given the chunk-level saliency distribution $\{w_j\}_{j=1}^{J}$ defined in Section~\ref{sec:saliency_over_chunk}, we identify reasoning chunks that contribute little to final exam success and selectively reinforce the corresponding training problems with GRPO.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{Image/saliency_diagram.png}
+  \caption{Online saliency guided token reweighting in GRPO.}
+  \label{fig:saliency-pipeline}
+\end{figure}
 
-The key idea is to operate entirely at the \emph{reward level}
-rather than modifying the GRPO advantage formula or its clipped objective, 
-we adjust the scalar reward returned to the trainer so that problems containing weak reasoning patterns 
-receive amplified reward deviations within each group. This design keeps the approach compatible with any 
-standard GRPO implementation (e.g., the TRL library's \texttt{GRPOTrainer}) without requiring changes to 
-the optimization loop itself.
+Given the chunk-level saliency distribution ${w_j}_{j=1}^{J}$ defined in Section~\ref{sec:saliency_over_chunk}, we identify chunks that contribute little to final exam success and selectively amplify the gradient on their corresponding tokens during GRPO training. The method operates directly on the per-token loss mask, enabling finer-grained control by reweighting only weak reasoning segments rather than scaling entire trajectories.
 
-\subsubsection{Building the Weak-Chunk Database}
-\label{sec:weak-chunk-db}
+\subsubsection{Online Saliency Computation via GRPO Rollouts}
 
-The saliency analysis described in Section~\ref{sec:saliency_over_chunk} produces, for every analyzed problem, a normalized weight vector $\mathbf{w} = (w_1, \dots, w_J)$ over its $J$ reasoning chunks.  We say a problem \emph{contains a weak chunk} if at least one of its chunks falls below a saliency threshold $\delta$:
-%
+For each question, the reward function records per-chunk quiz scores $Q_{i,j}$ and exam scores $E_i$ across the $G$ rollouts. After scoring all completions, the trainer computes ${w_j}_{j=1}^{J}$ using the same exam-weighted formulation as in Section~\ref{sec:saliency_over_chunk}, treating the $G$ trajectories as $K = G$ runs. Degenerate items with all-zero exam scores are excluded from reweighting for that step.
+
+Because saliency is re-estimated at every generation round from the current policy, the diagnostic signal adapts as the model improves. Previously degenerate problems may become informative once partially solved, and repaired weak chunks are no longer reweighted. The GRPO group size $G$ matches the saliency run count $K$ used offline to maintain comparable reliability.
+
+
+\subsubsection{Identifying Weak Chunks}
+
+Given the online saliency vector $\mathbf{w} = (w_1, \ldots, w_J)$ for
+question~$q$, we define the set of weak chunks as
 \begin{equation}
-  \mathcal{W}_q \;=\; \bigl\{\, j \;\bigm|\; w_j \le \delta \,\bigr\},
-  \label{eq:weak-set}
+  \mathcal{W}_q \;=\; \bigl\{\, j \;\bigm|\; w_j < \delta \,\bigr\},
+  \label{eq:weak-set-online}
 \end{equation}
-%
-where $\delta = 0.10$ in our experiments.  For each such problem $q$, we store a pre-computed \emph{weak-chunk intensity} score
-%
+where $\delta = 0.10$ is the same saliency threshold used in the offline
+analysis.  If $\mathcal{W}_q = \emptyset$, no token reweighting is applied
+and the training step proceeds with the standard GRPO loss.
+
+\subsubsection{Per-Token Weight Construction}
+
+For each completion~$o_i$ whose question contains at least one weak chunk,
+we construct a per-token weight vector
+$\boldsymbol{\omega} \in \mathbb{R}^{L}$, where $L$ is the completion
+length in tokens.  The completion text is segmented into $J$ reasoning
+chunks using the same chunking procedure applied during reward computation
+(Section~\ref{sec:reward-modeling}).  Each token is then assigned to its
+enclosing chunk based on character-to-token alignment.
+
+Let $\mathcal{T}_j \subseteq \{1, \ldots, L\}$ denote the set of token
+positions belonging to chunk~$j$.  The per-token weight is defined as:
 \begin{equation}
-  \bar{m}_q \;=\; \frac{|\mathcal{W}_q|}{J},
-  \label{eq:m-bar}
+  \omega_t \;=\;
+  \begin{cases}
+    \alpha & \text{if } t \in \mathcal{T}_j \text{ for some } j \in \mathcal{W}_q, \\[4pt]
+    1 & \text{otherwise},
+  \end{cases}
+  \label{eq:per-token-weight}
 \end{equation}
-%
-which represents the fraction of reasoning chunks classified as weak.  These entries are turned into a static lookup table (the weak-chunk database), keyed by the problem identifier.
-The database is constructed offline and remains fixed throughout GRPO training.  This static design avoids the computational cost of re-running saliency analysis during training.
+where $\alpha > 1$ is the \emph{weak-chunk amplification factor}.  In our
+experiments, we set $\alpha = 1.5$.  Tokens outside any identified chunk retain a weight of~$1$.
 
+\subsubsection{Positive Advantage Gating}
 
+Applying gradient amplification to all trajectories would be counterproductive. 
+For trajectories with negative advantage, amplifying the loss on weak-chunk tokens would strengthen the gradient that reinforces a failing reasoning pattern. 
+To avoid this issue, we gate the reweighting based on the sign of the GRPO advantage.
 
-\subsubsection{Reward-Level Weak-Chunk Focusing}
-\label{sec:reward-focusing}
-
-During GRPO training, the trainer samples a group of $G$ complete reasoning trajectories 
-\[
-\{o_1, \dots, o_G\}
-\sim
-\pi_{\theta_{\mathrm{old}}}(\cdot \mid q),
-\] for each question $q$.  
-Each trajectory receives a scalar reward $r_i = R(q, o_i)$ computed from the three 
-reward components (step bonus, exam reward, and quiz reward) defined in Section~\ref{sec:reward-modeling}.
-
-For questions that appear in the weak-chunk database, we apply a \emph{reward-level focusing} adjustment that 
-amplifies each trajectory's deviation from the group mean:
-%
+Let $A_i$ denote the advantage of trajectory~$o_i$ computed by GRPO.
+Define the positive advantage indicator
 \begin{equation}
-  r'_i \;=\; r_i \;+\; \kappa \cdot \bar{m}_q \cdot \bigl(r_i - \mu_{\mathrm{group}}\bigr),
-  \label{eq:reward-focus}
+  \mathbb{1}^{+}_i \;=\;
+  \begin{cases}
+    1 & \text{if } A_i > 0, \\
+    0 & \text{otherwise}.
+  \end{cases}
+  \label{eq:pos-adv-gate}
 \end{equation}
-%
-where $\mu_{\mathrm{group}} = \frac{1}{G}\sum_{i=1}^{G} r_i$ is the mean reward within the group, $\bar{m}_q$ is the pre-computed weak-chunk intensity from Equation~\eqref{eq:m-bar}, and $\kappa > 0$ is a focus coefficient.  For problems not in the weak-chunk database, $\bar{m}_q = 0$ and the reward remains unchanged.
+The effective per-token weight for trajectory~$i$ at position~$t$ is then:
+\begin{equation}
+  \tilde{\omega}_{i,t} \;=\;
+  \mathbb{1}^{+}_i \cdot \omega_t
+  \;+\;
+  (1 - \mathbb{1}^{+}_i) \cdot 1.
+  \label{eq:effective-weight}
+\end{equation}
+In other words, the amplification factor~$\alpha$ is applied only to
+trajectories that scored above the group mean (positive advantage), where
+the gradient pushes the policy toward reproducing those trajectories. 
+For negative advantage trajectories, all token weights remain $1$, so the standard GRPO gradient suppresses the trajectory uniformly without over-penalizing weak chunks.
 
-The effect of Equation~\eqref{eq:reward-focus} is intuitive. In a group of trajectories for a weak-chunk problem, trajectories that score above the group mean have their reward increased, while those scoring below the mean have their reward decreased.  The magnitude of this shift is proportional to both the focus coefficient $\kappa$ and the fraction of weak chunks $\bar{m}_q$. This amplification increases the selection pressure within weak-chunk problems, 
-encouraging the policy to move away from lower reward reasoning trajectories 
-and toward higher reward alternatives. 
-If the reward gap is primarily driven by weak reasoning segments, 
-this mechanism indirectly promotes trajectories that repair those segments 
-in subsequent rollouts.
+This gating mechanism leads to a progressive training dynamic. Early in training, positive advantage trajectories are rare, so reweighting has little impact and training resembles standard GRPO. As the model improves and begins to produce successful trajectories, reweighting activates and reinforces weak reasoning segments, helping the model refine previously fragile reasoning abilities.
+
+\subsubsection{Integration with the GRPO Loss}
+
+The standard GRPO loss for a single trajectory takes the form
+\begin{equation}
+  \mathcal{L}
+  \;=\;
+  \frac{\sum_{t=1}^{L} \ell_t \cdot m_t}{\sum_{t=1}^{L} m_t},
+  \label{eq:grpo-loss-standard}
+\end{equation}
+where $\ell_t$ is the per-token policy-ratio loss (including clipping and
+KL regularization) and $m_t \in \{0,1\}$ is the completion mask that
+excludes padding tokens.  The denominator normalizes the loss into a
+per-token average, ensuring that completions of different lengths contribute
+proportionally rather than letting longer sequences dominate the gradient.
+
+Our modification replaces the binary completion mask with a
+\emph{saliency-weighted effective mask}:
+\begin{equation}
+  \tilde{m}_{i,t}
+  \;=\;
+  m_t \cdot \tilde{\omega}_{i,t},
+  \label{eq:effective-mask}
+\end{equation}
+and substitutes $\tilde{m}_{i,t}$ for $m_t$ in
+Equation~\eqref{eq:grpo-loss-standard}.  The resulting loss becomes
+\begin{equation}
+  \tilde{\mathcal{L}}
+  \;=\;
+  \frac{\sum_{t=1}^{L} \ell_t \cdot \tilde{m}_{i,t}}
+       {\sum_{t=1}^{L} \tilde{m}_{i,t}}.
+  \label{eq:grpo-loss-reweighted}
+\end{equation}
+Because the same effective mask appears in both the numerator and the
+denominator, the reweighting does not scale the overall loss magnitude.
+Instead, it redistributes the \emph{relative contribution} of each token
+within the per-token average.  Under standard GRPO, every real token
+contributes a fraction $1/L$ to the mean loss.  With the effective mask, a
+token in a weak chunk ($\tilde{\omega}_{i,t} = \alpha$) contributes
+\begin{equation}
+  \frac{\alpha}
+       {\alpha\,|\mathcal{T}_w| + (L - |\mathcal{T}_w|)}
+  \;>\;
+  \frac{1}{L},
+  \label{eq:reweighted-fraction}
+\end{equation}
+where ${|\mathcal{T}_w|}$ is the number of tokens in weak chunks.
+Correspondingly, tokens outside weak chunks see their relative weight
+decrease. The effect is that gradient updates prioritize improving predictions on reasoning segments identified as fragile, while allocating relatively less emphasis to segments that are already reliable.
 
 
-\paragraph{Relationship to advantage scaling.}
-
-An alternative approach would directly scale the GRPO advantage,
-such as $\hat{A}_i = (1 + \kappa \bar{m}_q) A_i$.
-However, this is not mathematically equivalent to the reward-level
-formulation in Equation~\eqref{eq:reward-focus}.
-Direct advantage scaling modifies the gradient magnitude after
-normalization, whereas reward-level focusing reshapes the reward
-distribution itself and therefore alters both the group variance
-and the subsequent normalization step.
-As a result, the two methods may lead to different optimization
-dynamics in practice.
-
-
-
-% \subsection{Identifying weak chunks.}
-% Let $\mathcal{W} \subseteq \{1,\dots,J\}$ denote the set of low-saliency chunks:
-% \begin{equation}
-% \mathcal{W} =
-% \begin{cases}
-% \arg\operatorname{bottom}_k \{ w_j \}, & \text{(lowest-$k$ chunks)}, \\
-% \{ j \mid w_j \le \delta \}, & \text{(below threshold $\delta$)}.
-% \end{cases}
-% \end{equation}
-
-% \subsection{GRPO group advantages.}
-% For a given question $q$, GRPO samples a group of $G$ complete reasoning trajectories
-% $\{o_1,\dots,o_G\} \sim \pi_{\theta_{\text{old}}}(\cdot \mid q)$.
-% Each trajectory receives a scalar reward $r_i$, and the standard GRPO advantage is computed as
-% \begin{equation}
-% A_i =
-% \frac{
-% r_i - \operatorname{mean}(\{r_1,\dots,r_G\})
-% }{
-% \operatorname{std}(\{r_1,\dots,r_G\})
-% }.
-% \end{equation}
-
-% \subsection{Weak-chunk-aware advantage scaling.}
-% To emphasize trajectories that expose weak reasoning segments, we define a weak-chunk indicator:
-% \begin{equation}
-% m_j = \mathbb{1}\{ j \in \mathcal{W} \},
-% \end{equation}
-
-% and aggregate it at the trajectory level as
-% \begin{equation}
-% \bar m_i = \frac{1}{J} \sum_{j=1}^{J} m_{i,j}.
-% \end{equation}
-
-% We then define an adjusted advantage as
-% \begin{equation}
-% \hat A_i = (1 + \kappa \bar m_i) A_i,
-% \end{equation}
-% where $\kappa > 0$ is a focus coefficient. Trajectories that contain weak reasoning chunks therefore receive amplified gradient magnitudes, enabling targeted credit assignment.
-
-% \subsection{GRPO objective with weak-chunk focus.}
-% Let the importance ratio be
-% \begin{equation}
-% \rho_i(\theta) =
-% \frac{\pi_\theta(o_i \mid q)}{\pi_{\theta_{\text{old}}}(o_i \mid q)}.
-% \end{equation}
-% The weak-chunk-aware GRPO objective is
-% \begin{equation}
-% \mathcal{L}_{\text{GRPO}}^{\text{focus}}
-% =
-% \mathbb{E}
-% \left[
-% \frac{1}{G}
-% \sum_{i=1}^{G}
-% \min
-% \left(
-% \rho_i(\theta)\hat A_i,
-% \operatorname{clip}(\rho_i(\theta), 1-\epsilon, 1+\epsilon)\hat A_i
-% \right)
-% \right]
-% -
-% \beta D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\text{ref}}).
-% \end{equation}
-
-% \paragraph{Stopping criterion.}
-% The stopping criterion operates at the level of chunk saliency estimation and is therefore independent of the GRPO. A chunk $j \in \mathcal{W}$ is removed from the weak set once its estimated contribution improves:
-% \begin{equation}
-% \Delta w_j = w^{\text{new}}_j - w^{\text{old}}_j \ge \eta
-% \quad \text{or} \quad
-% \Delta Q_j \ge \eta,
-% \end{equation}
-% where $Q_j$ denotes the normalized quiz reward associated with chunk $j$.
-
-% \paragraph{Example.}
-% Assume $T=6$ reasoning steps with chunk size $m=2$, resulting in $J=3$ chunks.
-% The estimated saliency distribution is
-% \[
-% w = [0.22,\; 0.53,\; 0.00],
-% \]
-% so the weakest chunk is $\mathcal{W}=\{3\}$.
-
-% For a GRPO group of $G=4$ trajectories, suppose the normalized group-relative advantages are
-% \[
-% A = [0.40,\; 0.30,\; 0.10,\; -0.10],
-% \]
-% and the weak-chunk indicators are
-% \[
-% \bar m = [0,\; 0,\; 1,\; 1].
-% \]
-% With $\kappa = 1.0$, the adjusted advantages become
-% \[
-% \hat A = [0.40,\; 0.30,\; 0.20,\; -0.20].
-% \]
-
-% Thus, trajectories that contain weak reasoning chunks receive stronger positive or negative gradients, accelerating improvement on deficient reasoning segments while preserving GRPO’s group-relative and clipped optimization structure.
-
+The mask substitution approach preserves the loss scale and can be
+implemented as a simple tensor replacement within
+\texttt{compute\_\allowbreak loss}, without modifying the rest of the training loop.
+All other components, including reward computation, advantage normalization, clipped surrogate objective, and KL regularization, remain identical to
+standard GRPO. This minimal design avoids reliance on internal library functions
+and maintains compatibility with future TRL updates.
 
 \chapter{Experiments and Results}
 
@@ -1002,12 +954,12 @@ Reinforcement learning is conducted on a combined training set consisting of GSM
   the original problem.
 \end{enumerate}
 
-\begin{figure}[tbp]
-  \centering
-  \includegraphics[height=0.45\textheight,keepaspectratio]{Image/QuizGeneratePipeline.png}
-  \caption{Quiz generation and quality filtering pipeline.}
-  \label{fig:quiz-generate-pipeline}
-\end{figure}
+% \begin{figure}[tbp]
+%   \centering
+%   \includegraphics[height=0.45\textheight,keepaspectratio]{Image/QuizGeneratePipeline.png}
+%   \caption{Quiz generation and quality filtering pipeline.}
+%   \label{fig:quiz-generate-pipeline}
+% \end{figure}
 
 Then, the verifier model (GPT-5.2) assigns an \code{overall\_ok} flag to each problem--quiz pair set. This flag is set to False if any quiz in the set is labeled as bad, ensuring strict quality control. We observed that
 approximately 791 problems ($\sim$5.3\% of the dataset) consistently produced only bad quizzes on multiple generation attempts. These problems were
@@ -1021,29 +973,28 @@ original problems and 41{,}376 quiz--answer pairs), forming a clean and well-ali
 
 \subsection{Baseline Model Configuration}
 \label{sec:baseline_model_config}
-To evaluate the effectiveness of step-level reinforcement learning across different model scales, we consider two baseline language models: Qwen2.5-7B-Instruct and Qwen2.5-3B-Instruct. These models belong to the same architecture family and share an identical decoder-only Transformer structure, differing only in parameter count. This design allows us to isolate the effect of model capacity when analyzing reinforcement learning signals.
+To evaluate the effectiveness of step-level reinforcement learning, we use Qwen2.5-7B-Instruct as the base model. This model follows a decoder-only Transformer architecture and serves as the foundation for all reinforcement learning experiments. By keeping the backbone architecture fixed, we ensure that observed performance differences can be attributed to the reinforcement learning design rather than variations in model structure.
 
-All baseline models are first initialized through supervised fine-tuning (SFT) on the MetaMathQA dataset using Low-Rank Adaptation (LoRA). During this stage, the base model parameters remain frozen, and only the LoRA parameters are optimized. This parameter-efficient setup reduces memory overhead and improves training stability while enabling the model to acquire task-specific mathematical reasoning behaviors.
-
-After supervised fine-tuning converges, the trained LoRA adapters are merged into the base model weights, producing a single consolidated checkpoint for each model size. The resulting merged models serve as SFT baselines and represent the final output of the supervised learning stage.
+Baseline model is first initialized through supervised fine-tuning (SFT) on the MetaMathQA dataset using Low-Rank Adaptation (LoRA). During this stage, the base model parameters remain frozen, and only the LoRA parameters are optimized. This parameter-efficient setup reduces memory overhead and improves training stability while enabling the model to acquire task-specific mathematical reasoning behaviors.
+After SFT converges, the trained LoRA adapters are merged into the base model to produce a consolidated checkpoint. The merged model serves as the SFT baseline for subsequent experiments.
 
 For reinforcement learning post-training, we attach a new set of LoRA adapters to these merged SFT models and apply Group Relative Policy Optimization (GRPO). This separation ensures that the reinforcement learning phase is built upon a fixed SFT-initialized policy, while allowing reinforcement learning updates to be applied independently through newly introduced low-rank parameters.
 
-Baseline performance is evaluated after supervised fine-tuning and prior to any reinforcement learning updates. This evaluation provides a clean reference point that allows us to attribute subsequent performance changes specifically to the effects of reinforcement learning.
+Baseline performance is evaluated after SFT and prior to any reinforcement learning updates. This evaluation provides a clean reference point that allows us to attribute subsequent performance changes specifically to the effects of reinforcement learning.
 
 \subsection{Reinforcement Learning Procedure}
 \label{sec:rl-procedure}
 
 Following supervised initialization, we further optimize the policy using
 Group Relative Policy Optimization (GRPO), a method that avoids
-training a value function by computing \emph{group-relative}
+training a value function by computing group relative
 advantages from multiple sampled completions per prompt.
 
 \paragraph{Initialization and parameterization.}
 We start from the SFT pretrained checkpoint and load it as the initial policy.
 In our implementation, the policy is instantiated through an \texttt{ExamModel}
-wrapper that (i) ensures a valid \texttt{pad\_token} by falling back to the
-\texttt{eos\_token} when needed, and (ii) applies parameter-efficient adaptation via LoRA on both attention and MLP projection layers as shown below:
+wrapper that ensures a valid \texttt{pad\_token} by falling back to the
+\texttt{eos\_token} when needed, and applies LoRA on both attention and MLP projection layers as shown below:
 \[
 \{ \texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj},
    \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj} \}.
@@ -1054,14 +1005,14 @@ To improve memory efficiency for long generations, we enable gradient
 checkpointing and disable KV-cache during training (i.e., \texttt{use\_cache=False}).
 
 \paragraph{Training data and prompt format.}
-GRPO is trained on a mixed dataset of GSM8K and MATH training problems with pre-generated intermediate quizzes and gold answers. Each training example contains the original question $q$, the ground-truth final answer, and a small set of quizzes,
+\label{sec:training-data-and-prompt-format}
+GRPO is trained on a mixed dataset of 5000 GSM8K and MATH training problems with pre-generated intermediate quizzes and gold answers. Each training example contains the original question $q$, the ground-truth final answer, and a small set of quizzes,
 \[
 \{(q_j^{\text{quiz}}, a_j^{\text{quiz}})\}_{j=1}^{N_q},
 \quad N_q \in \{1,2,3\}.
 \]
 , where \(N_q\) varies between 1 and 3.
-At training time, each question is formatted into a fixed template that enforces:
-(1) explicitly separated reasoning steps (e.g., \texttt{Step 1:}, \texttt{Step 2:}, \dots), and (2) a single final answer in a strict XML-like tag \texttt{<final\_answer>...</final\_answer>}.
+At training time, each question is formatted into a fixed template that enforces clearly separated reasoning steps (e.g., \texttt{Step 1:}, \texttt{Step 2:}, \dots), and a single final answer in a strict XML-like tag \texttt{<final\_answer>...</final\_answer>}.
 The exact prompt templates are provided in the Appendix~\ref{app:prompt} and related appendix sections.
 
 \paragraph{Generation and group sampling.}
@@ -1073,8 +1024,7 @@ where \(\pi_{\theta_{\text{old}}}\) denotes the policy before the current update
 In our runs, we use \(G=3\) generations per prompt.
 To keep rollouts efficient, we enable vLLM-based decoding in \texttt{colocate}
 mode (single-GPU setting) with \texttt{vllm\_gpu\_memory\_utilization=0.45}.
-Sampling uses \(\texttt{temperature}=0.6\), \(\texttt{top\_p}=0.95\),
-and \(\texttt{max\_tokens}=256\), and generation is terminated early when
+Sampling uses \(\texttt{temperature}=0.6\), \(\texttt{top\_p}=0.95\), and generation is terminated early when
 encountering \texttt{</final\_answer>} or the EOS token.
 
 \paragraph{Reward computation.}
@@ -1172,267 +1122,135 @@ We clip gradient norm at 1.0.
 We also adopt dynamic padding in the data collator and mask padded tokens with
 label value \(-100\) to avoid contributing to the loss.
 
-\subsection{Reward Reweighting in GRPO}
+% =============================================================================
+% Section 4.1.4 — Rewritten to match actual OnlineSaliencyGRPOTrainer
+% Replace the entire current Section 4.1.4 content with this.
+% =============================================================================
 
-\paragraph{Training Data Preparation}
-\label{sec:weak-chunk-data-prep}
+\subsection{Online Saliency Guided Token Reweighting in GRPO}
+\label{sec:exp-saliency-grpo}
 
-We construct the GRPO training set by first sampling 5{,}000 problems at random. We then ensure that all 1{,}000 weak-chunk problems from \ref{sec:weak-chunk-db} are included. Any missing weak-chunk items are added from the full cache, and the same number of non-weak problems are removed to keep the total size at 5{,}000. This guarantees full weak-chunk coverage while maintaining a balanced training pool.
+This section describes the experimental configuration for the online
+saliency guided token reweighting mechanism introduced in
+Section~\ref{sec:online-saliency-grpo}.
 
-\paragraph{Reward Reweighting Mechanism}
+\paragraph{Training data.}
+We use the same 5{,}000 problem training set described in
+Section~\ref{sec:training-data-and-prompt-format}, sampled from the merged
+GSM8K and MATH problems. Weak chunks are identified
+dynamically from the rollouts of each generation round, so every problem in
+the training set is a candidate for token reweighting whenever its
+online saliency reveals a fragile reasoning segment.
 
-Let $\{r_i\}_{i=1}^{G}$ denote the scalar rewards of the $G$ trajectories sampled for the same question $q$ under GRPO. 
-We introduce a reward-level reweighting mechanism that selectively amplifies within-group reward differences for weak-chunk problems.
-
-Let
-\begin{equation}
-\mu_{\text{group}} = \frac{1}{G} \sum_{i=1}^{G} r_i
-\end{equation}
-be the mean reward within the group. 
-
-For questions that appear in the weak-chunk database, we compute a weak intensity score 
-$\bar{m}_q$ representing the fraction of weak reasoning chunks in that problem. 
-We then reshape the reward as
-
-\begin{equation}
-r_i' = r_i + \kappa \, \bar{m}_q \, (r_i - \mu_{\text{group}})
-\end{equation}
-
-where $\kappa$ is a focusing coefficient. 
-In our experiments, we set $\kappa = 0.5$ unless otherwise specified. 
-For questions not marked as weak-chunk problems, we use $\bar{m}_q = 0$ and keep $r_i' = r_i$.
-
-\paragraph{Experimental Settings}
-
-We use a group size $G$ identical to the baseline GRPO configuration. 
-All other hyperparameters, including learning rate, batch size, generation length, KL coefficient, 
-and reward thresholds, remain unchanged from the main GRPO setup. 
-This ensures that any observed performance difference can be attributed solely to the reward reweighting mechanism.
+\paragraph{Saliency hyperparameters.}
+The \texttt{OnlineSaliencyGRPOTrainer} introduces two additional hyperparameters beyond the standard GRPO configuration, the weak-chunk amplification factor $\alpha = 1.5$ and the saliency threshold $\delta = 0.1$. A chunk~$j$ is classified as weak whenever its online saliency weight satisfies $w_j < \delta$, and tokens belonging to such chunks receive a completion-mask weight of $\alpha$ instead of $1$ in the loss computation, as described in Section~\ref{sec:online-saliency-grpo}.
 
 
+\paragraph{GRPO hyperparameters.}
+All core GRPO hyperparameters remain identical to the baseline
+configuration in Section~\ref{sec:rl-procedure}, with the following
+exception.  The number of epochs is increased from~1 to~2 to give the
+online saliency mechanism sufficient iterations to detect and reinforce
+weak chunks as the policy evolves.
+
+\paragraph{Implementation.}
+The trainer is implemented as a subclass of TRL's \texttt{GRPOTrainer}. The only change to the training loop is the replacement of the completion mask described in Section~\ref{sec:online-saliency-grpo}, 
+where the binary completion mask is replaced with a saliency-weighted mask before calling the loss computed by the parent class \texttt{compute\_\allowbreak loss}.
+
+Online saliency is computed within the reward function by aggregating per-chunk quiz and exam scores across the $G$ rollouts for each question. Token reweighting is applied only to trajectories with positive advantage, preventing gradient amplification on failing reasoning patterns. All other components, including vLLM-based generation, reward computation, and advantage normalization, remain unchanged.
+
+\paragraph{Controlled comparison.}
+To isolate the effect of the token reweighting mechanism, we initialize
+the saliency-guided run from the same backbone Qwen2.5-7B-Instruct
+used for the GRPO experiments and train on the identical
+5{,}000-problem dataset.  The only differences are the two
+saliency specific hyperparameters ($\alpha$, $\delta$), the increased
+epoch count, and the online saliency logic itself.
+This ensures that any observed performance change can be attributed to
+the token reweighting mechanism rather than differences in data
+composition or optimization schedule.
 
 \section{Evaluation Metrics and Benchmarking}
 
-We evaluate model performance on four widely used mathematical reasoning benchmarks:
-\textbf{GSM8K}, \textbf{MATH}, \textbf{MATH500} and \textbf{AIME~2024}.
-These benchmarks span a broad spectrum of reasoning difficulty, covering
-multi-step arithmetic reasoning, symbolic manipulation, competition-level
-mathematics, and professional exam-style multiple-choice questions.
-Together, they provide a comprehensive assessment of both numerical accuracy
-and reasoning robustness.
+We evaluate model performance on four mathematical reasoning benchmarks:
+\textbf{GSM8K}, \textbf{MATH}, \textbf{MATH500}, and \textbf{AIME~2024}.
+These benchmarks cover a range of difficulty levels, from multi-step arithmetic to competition-level mathematics.
 
-All evaluations are conducted using a unified benchmarking pipeline that
-standardizes prompt formatting, answer extraction, normalization, and metric
-computation across tasks. Unless otherwise specified, results are computed on
-held-out test sets and averaged over multiple independent runs with fixed
-random seeds.
+All evaluations are conducted using a unified benchmarking pipeline that standardizes prompt formatting, answer extraction, normalization, and metric computation. Unless otherwise specified, results are computed on the test sets with fixed random seeds.
 
 \subsection{Pass@\texorpdfstring{$1$}{1}}
 
-Pass@1 measures the probability that the model's \emph{first} generated answer
-is correct under greedy decoding.
-Given a dataset of $N$ problems, let $\widehat{y}_i$ denote the model's first
-prediction for problem $i$, and let $y_i$ be the corresponding ground-truth
-answer.
-Pass@1 is defined as:
+Pass@1 measures single-shot accuracy under greedy decoding.
+Given $N$ problems with predictions $\widehat{y}_i$ and ground-truth answers $y_i$,
 \[
 \mathrm{Pass@1}
-\;=\;
+=
 \frac{1}{N}
 \sum_{i=1}^{N}
-\mathbb{I}\!\left(\widehat{y}_i = y_i\right),
+\mathbb{I}\!\left(\widehat{y}_i = y_i\right).
 \]
-where $\mathbb{I}(\cdot)$ is the indicator function, equal to $1$ if the
-condition holds and $0$ otherwise.
-
-Pass@1 reflects single-shot reasoning performance without reliance on sampling or self-consistency, and is therefore a strict measure of a model's deterministic reasoning capability.
 
 \subsection{Pass@\texorpdfstring{$k$}{k}}
 
-Pass@$k$ evaluates whether the model can produce \emph{at least one} correct
-answer among the top $k$ generated outputs for a given problem.
-For each problem $i$, the model generates a set of $k$ candidate solutions
-$\{\widehat{y}_{i,1}, \widehat{y}_{i,2}, \ldots, \widehat{y}_{i,k}\}$, where the
-first sample is produced via greedy decoding and the remaining $k-1$ samples
-are obtained through stochastic sampling with temperature and nucleus
-filtering.
-
-Let $n$ denote the total number of generated samples and $c$ the number of
-correct samples among them.
-Following standard practice, Pass@$k$ is estimated as:
+Pass@$k$ measures whether at least one correct answer appears among $k$ generated samples.
+Following standard practice, it is estimated as
 \[
 \mathrm{Pass@}k
-\;=\;
-1 - \prod_{j=n-c+1}^{n}
-\left(1 - \frac{k}{j}\right),
+=
+1 -
+\frac{\binom{n-c}{k}}{\binom{n}{k}},
 \]
-with the convention that $\mathrm{Pass@}k = 1$ when $n-c < k$.
-
-Pass@$k$ captures the model's ability to recover a correct reasoning path across
-multiple generations, and is commonly used to evaluate reasoning diversity and
-robustness.
-In this work, Pass@$k$ is reported using direct sampling without additional
-estimator correction.
+where $n$ is the total number of samples and $c$ the number of correct samples.
 
 \subsection{Consensus@\texorpdfstring{$64$}{64} (Con@64)}
 
-In addition to Pass@$k$, we report \textbf{Consensus@64 (Con@64)}, a metric that
-measures the reliability of the model under extensive stochastic sampling.
-For each problem, the model generates $64$ independent solutions using
-non-greedy decoding.
-The final predicted answer is obtained via majority voting over the extracted
-final answers.
-
-Let $\{\widehat{y}_{i,1}, \ldots, \widehat{y}_{i,64}\}$ denote the set of
-generated answers for problem $i$, and let
+For each problem, 64 stochastic samples are generated and the final prediction
+is obtained by majority voting:
 \[
 \widehat{y}_i^{\mathrm{cons}}
 =
-\arg\max_{y}
+\arg\max_y
 \sum_{j=1}^{64}
-\mathbb{I}\!\left(\widehat{y}_{i,j} = y\right)
+\mathbb{I}(\widehat{y}_{i,j}=y).
 \]
-be the consensus answer.
-Consensus@64 is then defined as:
-\[
-\mathrm{Con@64}
-=
-\frac{1}{N}
-\sum_{i=1}^{N}
-\mathbb{I}\!\left(
-\widehat{y}_i^{\mathrm{cons}} = y_i
-\right).
-\]
-
-Con@64 captures the \emph{stability} of the model’s reasoning under repeated
-sampling, and is particularly informative for evaluating whether correct
-solutions dominate the model’s output distribution rather than appearing only
-sporadically.
-Unlike Pass@$k$, which only checks for the existence of a correct answer among
-multiple samples, Con@64 requires that correct reasoning emerges as the most
-frequent outcome.
+Consensus@64 is the accuracy of these majority voted predictions.
 
 
-% \subsection{Exact Match (EM)}
+\subsection{Benchmark Evaluation Protocols}
+\label{sec:eval_protocols}
 
-% Exact Match (EM) evaluates whether the predicted final answer exactly matches
-% the ground-truth answer after task-specific normalization.
-% Let $\mathrm{norm}(\cdot)$ denote a normalization function that removes
-% irrelevant formatting differences, such as whitespace, punctuation, or
-% dataset-specific answer wrappers.
-% EM is defined as:
-% \[
-% \mathrm{EM}
-% \;=\;
-% \frac{1}{N}
-% \sum_{i=1}^{N}
-% \mathbb{I}\!\left(
-% \mathrm{norm}\!\left(\widehat{y}_i\right)
-% =
-% \mathrm{norm}\!\left(y_i\right)
-% \right).
-% \]
+Each benchmark uses a task-specific prompt format, answer extraction method, and correctness check, implemented consistently within a unified evaluation pipeline.
 
-% For GSM8K and AIME~2024, normalization extracts the final integer answer from a
-% predefined output format.
-% For MATH, EM is computed after extracting the content inside
-% $\verb|\boxed|$, with symbolic equivalence checking when
-% available. EM provides a strict correctness criterion and is particularly important for
-% benchmarks such as AIME~2024, where partial credit is not meaningful.
+\paragraph{GSM8K.}
+The model is prompted to reason step by step and output the final integer in format \texttt{\#\#\#\# <integer>}. Correctness is determined by exact integer match. 
+Token level F1 is also computed as a secondary diagnostic.
 
-% \subsection{F1 Score}
+\paragraph{MATH.}
+The model is prompted to wrap its final answer in \texttt{\textbackslash boxed\{\dots\}}, which is extracted using brace balanced parsing. Correctness goes through a three stage check. First, the extracted strings are compared directly. If that fails, both answers are normalized to account for fractions, square roots, currency symbols, and unit suffixes. If that still fails, both are parsed into SymPy expressions via \texttt{latex2sympy2} and equivalence is verified by checking that \texttt{simplify(pred $-$ gold) $= 0$}. The test set is constructed by sampling 50 problems per difficulty level from Level~1 to Level~5, resulting in 250 problems in total.
 
-% The F1 score measures token-level overlap between the predicted answer and the
-% ground-truth answer, providing a softer notion of correctness that captures
-% partial agreement.
-% Let $T(\widehat{y}_i)$ and $T(y_i)$ denote the multisets of tokens appearing in
-% the prediction and ground truth, respectively.
-% Token-level precision and recall are defined as:
-% \[
-% \mathrm{Precision}_i
-% =
-% \frac{\left|T(\widehat{y}_i)\cap T(y_i)\right|}
-% {\left|T(\widehat{y}_i)\right|},
-% \qquad
-% \mathrm{Recall}_i
-% =
-% \frac{\left|T(\widehat{y}_i)\cap T(y_i)\right|}
-% {\left|T(y_i)\right|}.
-% \]
+\paragraph{MATH500.}
+The prompting, extraction, and three stage equivalence check are identical to MATH. The dataset is the full 500 problem \texttt{HuggingFaceH4/MATH-500} split, which focuses on harder and more reasoning intensive problems.
 
-% The F1 score for a single example is then:
-% \[
-% \mathrm{F1}_i
-% =
-% \frac{2\cdot \mathrm{Precision}_i \cdot \mathrm{Recall}_i}
-% {\mathrm{Precision}_i + \mathrm{Recall}_i},
-% \]
-% and the final dataset-level F1 score is obtained by averaging across all
-% examples:
-% \[
-% \mathrm{F1}
-% =
-% \frac{1}{N}
-% \sum_{i=1}^{N}
-% \mathrm{F1}_i.
-% \]
+\paragraph{AIME 2024.}
+AIME answers are integers in $[0, 999]$. The extractor first tries \texttt{\textbackslash boxed\{\dots\}}, then an \texttt{Answer:} pattern, and finally falls back to the last integer in the response. Numeric comparison is used so that leading zeros do not affect correctness. The generation budget is set to 2{,}048 tokens to accommodate longer reasoning chains. Con@64 with majority vote is enabled only for this benchmark.
 
-% F1 is primarily reported for GSM8K and MATH, where answers may exhibit minor
-% formatting or symbolic variations that are semantically equivalent but not
-% captured by exact matching.
-
-\subsection{Benchmark-Specific Evaluation Protocols}
-
-Different benchmarks require task-specific prompting, answer extraction, and
-equivalence checking:
-
-\begin{enumerate}
-    \item \textbf{GSM8K.}
-    The model is prompted to output the final integer answer in a fixed
-    \verb|#### <number>| format.
-    Evaluation uses exact integer matching for EM and token-level overlap for F1.
-
-    \item \textbf{MATH.}
-    The model outputs a single mathematical expression wrapped in a boxed format
-    (e.g., \verb|\boxed{$x^2 + 1$}|).
-    Exact Match (EM) is computed after extracting the boxed content.
-    We compute token-level F1 using the SQuAD-style overlap metric.
-    When string matching fails, we apply a symbolic equivalence fallback by
-    parsing both prediction and gold expressions with \texttt{latex2sympy2}
-    and verify equivalence by simplifying the difference to zero in SymPy.
-
-    \item \textbf{MATH500.}
-    We evaluate on the curated 500-problem subset \texttt{MATH-500}
-    The prompting and answer extraction follow the same protocol as \textbf{MATH}.
-    Metrics include EM and token-level F1. Additionally, we use the same
-    \texttt{latex2sympy2}+\texttt{SymPy} symbolic equivalence fallback when EM fails.
-
-    \item \textbf{AIME 2025.}
-    The model outputs a single integer in the range \([0, 999]\).
-    Evaluation focuses on Pass@1 and EM due to the absence of meaningful partial credit.
-\end{enumerate}
-
-Across all benchmarks, we report Pass@1, Pass@5, and con@64 to evaluate reasoning performance.
-Pass@1 measures deterministic accuracy under greedy decoding, while Pass@5 reflects the ability
-to recover correct solutions under limited multi-sample decoding.
-con@64 captures answer consistency across 64 sampled outputs, providing a measure of robustness
-and reasoning stability under stochastic decoding.
-
+\paragraph{Generation Setup.}
+Pass@1 uses greedy decoding. For Pass@$k$ with $k > 1$, one greedy response is combined with $k - 1$ sampled responses at temperature $T = 0.7$ and top-$p = 0.9$. All runs use a fixed seed of 42.
 
 
 % Results Discuss
 \section{Results Discussion}
 \label{sec:results_discussion}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1\textwidth]
-    {Image/all_model_comparison.png}
-    \caption{Benchmark comparison of all configurations.}
-    \label{fig:grpo_only_reward}
-\end{figure}
+% \begin{figure}[t]
+%     \centering
+%     \includegraphics[width=1\textwidth]
+%     {Image/all_model_comparison.png}
+%     \caption{Benchmark comparison of all configurations.}
+%     \label{fig:grpo_only_reward}
+% \end{figure}
 
-\begin{table}[H]
+\begin{table}[t]
 \centering
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{l|c|c|c|cc}
@@ -1447,32 +1265,36 @@ and reasoning stability under stochastic decoding.
 \multicolumn{6}{@{}l}{\textit{GRPO Training Data~A: GSM8K + MATH (5{,}000 problems, GPT-5-mini quizzes, verified)}} \\[3pt]
 \midrule
 Qwen2.5-7B (Base) 
-& 22.5 & 35.0 & 33.2 & 0.3 & 0.0 \\
+& 22.5 & 63.2 & 54.8 & 0.3 & 0.0 \\
 
 Qwen2.5-7B-Instruct-SFT 
-& 28.5 & 40.5 & 32.4 & 0.3 & 0.0 \\
+& 28.5 & 52.8 & 48.8 & 0.3 & 0.0 \\
 
 Qwen2.5-7B-Instruct-SFT-GRPO (w/o Quiz, Step) 
-& 49.5 & 42.0 & 40.0 & 0.0 & 0.0 \\
+& 49.5 & 58.8 & 51.6 & 0.0 & 0.0 \\
 
 Qwen2.5-7B-Instruct-SFT-GRPO 
-& 55.5 & 51.0 & 41.4 & 0.0 & 0.0 \\
+& 55.5 & 62.0 & 55.2 & 0.0 & 0.0 \\
 
 Qwen2.5-7B-Instruct
-& 87.0 & 47.5 & 46.4 & 13.3 & 10.0 \\
+& 87.0 & 75.5 & 68.4 & 13.3 & 10.0 \\
 
 Qwen2.5-7B-Instruct-GRPO (w/o Quiz, Step)
-& 89.5 & 47.0 & 47.8 & 6.7 & 0.0 \\
+& 89.5 & 73.2 & 63.6 & 6.7 & 0.0 \\
 
 Qwen2.5-7B-Instruct-GRPO
-& 91.0 & 53.0 & 49.0 & 13.3 & 10.0 \\
+& 91.0 & 76.8 & 70.4 & 13.3 & 13.3 \\
+
+Qwen2.5-7B-Instruct-SaliencyGRPO
+& \textbf{94.5} & \textbf{78} & \textbf{71.6} & \textbf{23.3} & \textbf{16.7} \\
+
 \midrule
 \multicolumn{6}{@{}l}{\textit{GRPO Training Data~B: GSM8K + MATH + AIME (3{,}438 problems, GPT-5.2 quizzes, difficulty-scaled)}} \\[3pt]
 \midrule
 Qwen2.5-7B-Instruct-GRPO-v2 (w/o Quiz, Step)
-& 90.0 & 67.5 & 69.4 & 10.0 & 10.0 \\
+& 90.0 & 77.2 & 71.0 & 10.0 & 10.0 \\
 Qwen2.5-7B-Instruct-GRPO-v2
-& \textbf{92.0} & \textbf{69.0} & \textbf{71.0} & 13.3 & 10.0 \\
+& 92.0 & 77.2 & 71.0 & 16.7 & 16.7 \\
 \bottomrule
 \end{tabular}%
 }
@@ -1481,8 +1303,9 @@ Qwen2.5-7B-Instruct-GRPO-v2
 \vspace{1mm}
 \begin{minipage}{\textwidth}
 \footnotesize
-\textit{Note.} GSM8K and MATH are evaluated on 200 randomly sampled test problems.
-MATH500 and AIME~2024 is evaluated on their full test set. All models use Qwen2.5-7B-Instruct as the backbone. Qwen2.5-7B (Base) refers to the pretrained model before instruction tuning and is included as a reference. All evaluations use a unified prompt template and answer extraction pipeline; absolute scores are not directly comparable to official benchmarks.
+\textit{Note.} GSM8K is evaluated on 200 randomly sampled test problems.
+For MATH, we randomly sample 50 problems from each of the five difficulty levels, resulting in a total of 250 evaluation problems.
+MATH500 and AIME~2024 is evaluated on their full test set. All models use Qwen2.5-7B-Instruct as the backbone. Qwen2.5-7B (Base) refers to the pretrained model before instruction tuning and is included as a reference.
 \end{minipage}
 \end{table}
 
@@ -1501,75 +1324,36 @@ how and where reinforcement learning improves long-horizon reasoning behavior.
 \label{sec:baseline_sft}
 
 Table~\ref{tab:grpo_three_models} summarizes the performance of multiple Qwen2.5-7B variants under
-the same evaluation prompts and answer extraction pipeline.
+the same evaluation pipeline.
 Compared with the \textit{Base} model, \textit{Qwen2.5-7B-Instruct} exhibits a substantial jump on
-all math benchmarks (e.g., GSM8K: 22.5 $\rightarrow$ 87.0, MATH: 35.0 $\rightarrow$ 47.5, MATH500:
-33.2 $\rightarrow$ 46.4, AIME2024: 0.3 $\rightarrow$ 13.3), indicating that instruction tuning already provides strong task
-alignment and improves the model's stability in producing solvable reasoning traces and
-extractable final answers.
+all math benchmarks (e.g., GSM8K: 22.5 $\rightarrow$ 87.0, MATH: 63.2 $\rightarrow$ 75.5, MATH500:
+54.8 $\rightarrow$ 68.4, AIME2024: 0.3 $\rightarrow$ 13.3), indicating that instruction tuning already provides strong task alignment and improves the stability of reasoning and final answer extraction.
 
 Interestingly, applying additional supervised fine-tuning (SFT) on top of the Instruct checkpoint
 (\textit{Qwen2.5-7B-Instruct-SFT}) does not further improve performance. Instead, it leads to a clear
-degradation relative to the original Instruct model (GSM8K: 87.0 $\rightarrow$ 28.5, MATH: 47.5
-$\rightarrow$ 40.5, MATH500: 46.4 $\rightarrow$ 32.4, AIME2024 13.3 $\rightarrow$ 0.3). We attribute this drop primarily to a
-\textit{distribution and formatting shift} introduced by the SFT stage under our evaluation setup.
+degradation relative to the original Instruct model (GSM8K: 87.0 $\rightarrow$ 28.5, MATH: 75.5
+$\rightarrow$ 52.8, MATH500: 68.4 $\rightarrow$ 48.8, AIME2024 13.3 $\rightarrow$ 0.3). We attribute this drop primarily to a
+distribution and formatting shift introduced by the SFT stage under our evaluation setup.
 First, SFT data (e.g., MetaMathQA style of solutions\cite{yu2024metamathbootstrapmathematicalquestions}) may encourage a different output style than what our unified evaluation template expects, such as missing or inconsistent final answer markers, or alternative formatting, which
-increases the chance of extraction failures and directly lowers strict Pass@1/EM-style
-metrics. Second, because the Instruct checkpoint is already well-aligned for instruction following,
-additional SFT can overemphasize dataset-specific writing patterns and reduce the model's robustness
-to the evaluation prompts used in this thesis, resembling a mild form of overfitting or forgetting
-of the original instruction-following behavior. In other words, the SFT stage may improve imitation
+increases the chance of extraction failures and directly lowers strict Pass@1/EM metrics. 
+Second, because the Instruct checkpoint is already well aligned for instruction following, additional SFT may overfit to dataset-specific writing patterns and reduce robustness to the evaluation prompts used in this thesis, resembling mild overfitting or partial forgetting of the original instruction-following behavior.
+In other words, the SFT stage may improve imitation
 of the training data set while harming the exact task alignment required by our
 benchmarking pipeline.
 
-This observation motivates the post-training design explored in subsequent sections: rather than
-relying on SFT to inject more supervised trajectories, we directly apply GRPO-based post-training
-to optimize for the same objective that is measured at evaluation. As shown later in Table~\ref{tab:grpo_three_models},
-post-training starting from the Instruct model recovers and exceeds the baseline performance,
-suggesting that reinforcement learning provides a more direct and robust alignment mechanism than
-additional SFT in our setting.
-
-\subsection{Main Results: GRPO with Quiz and Step Reward}
+\subsection{Main Results for GRPO with Quiz and Step Reward}
 \label{sec:main_results}
 
 We next evaluate the effectiveness of our main approach by examining its performance on standard mathematical reasoning benchmarks.
 We used a GRPO post-training setup with quiz and step rewards, and applied directly to an instruction-tuned Qwen2.5-7B model without supervised fine-tuning
 initialization.
-This evaluation focuses on whether the proposed reward design alone is sufficient to produce
-consistent improvements in final reasoning accuracy across benchmarks with varying levels of
-difficulty and depth of reasoning.
-
-
-% \begin{table}[htbp]
-% \centering
-% \resizebox{\textwidth}{!}{%
-% \begin{tabular}{l|c|c|c|cc}
-% \toprule
-% \textbf{Model} &
-% \textbf{GSM8K} &
-% \textbf{MATH} &
-% \textbf{MATH500} &
-% \multicolumn{2}{c}{\textbf{AIME 2024}} \\
-% & Pass@1 & Pass@1 & Pass@1 & Pass@5 & Con@64 \\
-% \midrule
-% Qwen2.5-7B-GRPO (w/o SFT) & 91.0 & 53.0 & 48.0 & 13.3 & 10.0 \\
-% \bottomrule
-% \end{tabular}}
-% \caption{Qwen2.5-7B-GRPO (w/o SFT) benchmark results.}
-% \label{tab:ablation_nosft_grpo}
-
-% \vspace{1mm}
-% \begin{minipage}{\textwidth}
-% \footnotesize
-% \textit{Note.} GSM8K and MATH are evaluated on 200 randomly sampled test problems.
-% MATH500 and AIME~2024 is evaluated on its full test set.
-% \end{minipage}
-% \end{table}
+This evaluation focuses on whether the proposed reward design alone is sufficient to produce consistent improvements in final reasoning accuracy across benchmarks with varying levels of difficulty and depth of reasoning.
 
 As shown in Table~\ref{tab:grpo_three_models}, applying GRPO with quiz and step rewards directly to Qwen2.5-7B-Instruct yields strong performance across all evaluated benchmarks, despite the absence of supervised fine-tuning initialization. On GSM8K, the model achieves a Pass@1 accuracy of 91.0\%.
 
-The improvements extend to more challenging benchmarks that require longer reasoning chains. On the MATH dataset, the model attains 53.0\% Pass@1, outperforming instruction-tuned baselines that do not incorporate reinforcement learning with quiz-based reward and step bonus. On MATH500, a more difficult subset selected from the original MATH benchmark to emphasize harder and more reasoning-intensive problems, the model achieves 49.0\% Pass@1, indicating improved generalization to high-difficulty instances beyond the broader MATH distribution. 
-On AIME~2024, performance remains lower due to extreme difficulty and competition-level problems. However, the GRPO only model without SFT still achieves the strongest overall results among all compared models, with a Pass@5 of 13.3\% and Con@64 of 10\%. This indicates that reinforcement learning helps the model produce correct answers more consistently across different samples, rather than relying on occasional lucky generations, even on very difficult problems.
+The improvements extend to more challenging benchmarks that require longer reasoning chains. On the MATH dataset, the model attains 76.8\% Pass@1, outperforming instruction tuned baselines that do not incorporate reinforcement learning with quiz-based reward and step bonus. On MATH500, a more difficult subset selected from the original MATH benchmark to emphasize harder and more reasoning intensive problems, the model achieves 70.4\% Pass@1, indicating an improved generalization to high difficulty problems beyond the broader MATH distribution. 
+
+On AIME~2024, performance remains limited due to the extreme difficulty of competition-level problems. The GRPO only model without SFT achieves a Pass@5 of 13.3\%, matching the Instruct baseline, while improving Con@64 from 10.0\% to 13.3\%. This suggests that reinforcement learning does not substantially increase accuracy on these hardest problems, but it improves solution consistency across larger samples. In other words, GRPO enhances the reliability of correct reasoning rather than merely increasing occasional lucky generations.
 
 Overall, this study shows that the proposed method does not rely heavily on supervised fine-tuning as a prerequisite for effective learning. Instead, the quizzes and step-level rewards provide sufficient guidance for reinforcement learning to improve long-horizon reasoning behavior. Even without human-annotated solutions, the model is able to make steady progress by learning from its own successes and failures. This suggests that reinforcement learning can serve as a practical and lightweight alternative for enhancing mathematical reasoning in LLMs, especially under limited annotation budgets and realistic computational constraints.
 
@@ -1582,18 +1366,9 @@ Overall, this study shows that the proposed method does not rely heavily on supe
     \label{fig:train_reward_traj}
 \end{figure}
 
-To further detail these benchmark improvements, we examine the training reward curve
-of Qwen2.5-7B using GRPO without supervised fine-tuning.
-As illustrated in Figure~\ref{fig:train_reward_traj}, the reward signal exhibits substantial
-variance throughout training, which is expected given the stochastic nature of reinforcement
-learning and the use of relative policy optimization.
-Despite this noise, the overall reward curve shows a clear upward trend over training steps.
+To further analyze the benchmark improvements, we examine the training reward trajectory of Qwen2.5-7B under GRPO without supervised fine-tuning. As shown in Figure~\ref{fig:train_reward_traj}, the reward signal exhibits noticeable variance, reflecting the stochastic nature of reinforcement learning and relative policy optimization.
 
-This gradual increase indicates that the model consistently discovers policies with higher
-expected rewards under the proposed reward design.
-Notably, the reward trajectories are consistent with the downstream benchmark improvements, suggesting that the performance gains come from steady learning during training.
-The presence of oscillations further highlights the model's exploration, particularly when
-reinforcement learning is applied without supervised initialization.
+Despite these fluctuations, the overall trend increases steadily over training steps, indicating progressive improvement in expected reward under the proposed reward design. The oscillations reflect ongoing exploration, while the upward trajectory aligns with the observed downstream benchmark gains, suggesting that performance improvements arise from sustained learning rather than isolated spikes.
 
 In summary, the reward trajectory provides supporting evidence that quiz-augmented and
 step-based rewards offer a meaningful learning signal, enabling effective policy optimization
@@ -1605,37 +1380,7 @@ as a standalone mechanism to improve reasoning behavior in LLMs.
 \subsection{Effect of Supervised Fine-Tuning Initialization}
 \label{sec:effect_sft}
 
-To analyze the role of supervised fine-tuning as an initialization step, we compare GRPO-trained
-models with and without prior SFT.
-The SFT initialization leads to more stable early-stage training reward trajectory and modest performance gains
-on benchmarks.
-This finding suggests that supervised fine-tuning is not strictly necessary,
-and that well-designed reinforcement learning reward signals can independently drive reasoning
-improvements.
-
-% \begin{table}[htbp]
-% \centering
-
-% \resizebox{\textwidth}{!}{%
-% \begin{tabular}{l|c|c|c|cc}
-% \toprule
-% \multirow{2}{*}{\textbf{Model}} & \textbf{GSM8K} & \textbf{MATH} & \multicolumn{2}{c}{\textbf{AIME 2024}} \\
-% & Pass@1 & Pass@1 & Pass@1 & Pass@5 \\
-% \midrule
-% Qwen2.5-7B-SFT-GRPO & 55.5 & 51.0 & 0.0 & 0.0 \\
-% Qwen2.5-7B-GRPO (w/o SFT) & 91.0 & 53.0 & 3.3 & 10.0 \\
-% \bottomrule
-% \end{tabular}%
-% }
-% \caption{Comparison results between models with and without SFT}
-% \label{tab:with_or_without_sft}
-% \vspace{1mm}
-% \begin{minipage}{\textwidth}
-% \footnotesize
-% \textit{Note.} GSM8K and MATH are evaluated on 200 randomly sampled test problems.
-% AIME~2024 are evaluated on their full test sets.
-% \end{minipage}
-% \end{table}
+To analyze the role of supervised fine-tuning as an initialization step, we compare GRPO-trained models with and without prior SFT. Although SFT initialization produces a more stable early-stage training reward trajectory, it does not lead to better benchmark performance and slightly degrades results. This suggests that supervised fine-tuning is not necessary for achieving strong downstream reasoning performance in this setting.
 
 \begin{figure}[tbp]
     \centering
@@ -1645,23 +1390,18 @@ improvements.
     \label{fig:train_reward_sft_grpo}
 \end{figure}
 
-Figure~\ref{fig:train_reward_sft_grpo} and Figure~\ref{fig:train_reward_traj} compare the training reward trajectories of Qwen2.5-7B under GRPO with and without supervised fine-tuning initialization respectively. With SFT initialization, the reward curve exhibits a smoother and more stable progression throughout training. This suggests that supervised fine-tuning provides a favorable starting point for policy optimization, allowing GRPO to refine reasoning behavior in a more controlled manner during the early and middle stages of training.
+Figure~\ref{fig:train_reward_sft_grpo} and Figure~\ref{fig:train_reward_traj} compare the training reward trajectories of Qwen2.5-7B under GRPO with and without SFT initialization. With SFT, the reward curve progresses more smoothly, especially in the early and middle stages of training, indicating a more stable optimization process. In contrast, the trajectory without SFT exhibits higher variance and larger oscillations in the early phase, reflecting noisier credit assignment. Nevertheless, it follows a similar upward trend and ultimately reaches comparable or higher reward levels.
 
-In contrast, the reward trajectory without SFT shows noticeably higher variance, particularly in the early phase, with larger oscillations despite a similar upward trend. Although the model eventually reaches comparable or higher reward levels, the less stable trajectory indicates noisier credit assignment and a more challenging optimization process. 
-
-Overall, these observations indicate that supervised fine-tuning primarily improves training stability rather than being strictly required for achieving strong final performance, as well-designed reinforcement learning signals alone remain sufficient to drive reasoning improvements.
-
+Overall, these results indicate that SFT mainly contributes to smoother optimization dynamics, while reinforcement learning alone remains capable of driving substantial reasoning improvements and achieving competitive final performance.
 
 \subsection{Ablation Study: Removing Quiz and Step Rewards}
 \label{sec:ablation_quiz_step}
 
 To isolate the contribution of quiz-based and step-level rewards, we compare three GRPO configurations that differ only in reward design and initialization, as shown in Table~\ref{tab:grpo_three_models}.
 
-\paragraph{Effect of Quiz and Step Rewards (no SFT).} Comparing the two models trained without SFT, removing quiz and step rewards leads to varying degrees of degradation depending on benchmark characteristics. On MATH, which contains a mixture of moderate and hard problems where success often depends on key intermediate steps, quiz and step rewards provide the largest gain (+6.0 pp, from 47.0\% to 53.0\%). On AIME 2024, quiz rewards help the model reason more reliably on the subset of problems it can attempt, improving Pass@5 from 6.7\% to 13.3\% (+6.6 pp). On GSM8K, the gap is small (-1.5 pp), as outcome-only rewards are already sufficient for short-horizon reasoning. On MATH500, the difference is negligible (-0.2 pp); these competition-level problems are difficult enough that models often fail at early reasoning stages, limiting the window in which intermediate quiz feedback can meaningfully redirect the reasoning process.
+\paragraph{Effect of Quiz and Step Rewards (no SFT).} Comparing the two models trained without SFT, removing quiz and step rewards leads to varying degrees of degradation depending on benchmark characteristics. On MATH, quiz and step rewards show a gain (+3.6 pp, from 73.2\% to 76.8\%). On AIME 2024, quiz rewards help improve Pass@5 from 6.7\% to 13.3\% (+6.6 pp). On GSM8K, the gap is small (+1.5 pp), as outcome-only rewards are already sufficient for single-hop reasoning. On MATH500, quiz and step rewards provide an improvement of +6.8 pp, from 63.6\% to 70.4\%, suggesting that intermediate feedback contributes to performance even on hard level problems, though the overall difficulty limits larger gains.
 
-This pattern suggests that quiz and step rewards are most effective at an intermediate difficulty range, where the model's reasoning is partially correct, but benefits from finer-grained credit assignment. At extremes, either the task is too easy for intermediate supervision to matter, or too hard for it to intervene before reasoning has already diverged.
-
-\paragraph{Effect of SFT Initialization (both without Quiz and Step).} Comparing the two models trained without quiz and step rewards, the SFT-initialized model (49.5\% GSM8K, 42.0\% MATH) substantially underperforms the model trained directly from the instruct backbone (89.5\% GSM8K, 47.0\% MATH). This suggests that SFT on MetaMathQA may constrain the policy's exploration during GRPO, limiting the effectiveness of reinforcement learning. In contrast, starting directly from the instruction-tuned model allows GRPO to explore a broader range of reasoning strategies.
+\paragraph{Effect of SFT Initialization (both without Quiz and Step).} Comparing the two models trained without quiz and step rewards, the SFT-initialized model (49.5\% GSM8K, 58.8\% MATH) substantially underperforms the model trained directly from the instruct backbone (89.5\% GSM8K, 73.2\% MATH). This suggests that SFT on MetaMathQA may constrain the policy's exploration during GRPO, limiting the effectiveness of reinforcement learning. In contrast, starting directly from the instruction-tuned model allows GRPO to explore a broader range of reasoning strategies.
 
 Overall, this ablation reveals that quiz and step rewards provide meaningful gains on benchmarks where intermediate reasoning quality is the bottleneck, with the largest improvements observed at moderate-to-hard difficulty levels. It also shows that SFT initialization is not only unnecessary but can hinder GRPO performance when the backbone is already instruction-tuned.
 
@@ -1757,7 +1497,7 @@ are excluded from pattern classification.
 Table~\ref{tab:saliency-patterns-gsm8k-math} summarizes the distribution of saliency
 patterns among the remaining valid problems.
 
-\begin{table}[H]
+\begin{table}[t]
 \centering
 \caption{Distribution of saliency patterns on GSM8K and MATH
 ($K\!=\!5$, $n\!=\!500$). Correct rate is the proportion of the $K$ runs in which the final answer is correct.}
@@ -1785,7 +1525,7 @@ patterns among the remaining valid problems.
 \end{table}
 
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -1873,8 +1613,6 @@ stronger on GSM8K than on the harder MATH dataset.
 
 \begin{table}[H]
 \centering
-\caption{Contingency table for quiz and exam outcomes. Quiz failure is a strong predictor of exam failure.}
-\label{tab:quiz-exam-contingency-gsm8k-math}
 \begin{tabular}{llccr}
 \toprule
 \textbf{Dataset} &  & \textbf{Exam Pass} & \textbf{Exam Fail} & \textbf{$P(\text{exam fail})$} \\
@@ -1888,6 +1626,8 @@ stronger on GSM8K than on the harder MATH dataset.
 & Quiz any fail &   659  & 233 & 26.1\% \\
 \bottomrule
 \end{tabular}
+\caption{Contingency table for quiz and exam outcomes. Quiz failure is a strong predictor of exam failure.}
+\label{tab:quiz-exam-contingency-gsm8k-math}
 \end{table}
 
 
@@ -1897,7 +1637,7 @@ Figure~\ref{fig:scaling-effect-line-chart-gsm8k-math} show that the probability 
 increases monotonically with the number of quiz failures in a
 single run, showing a clear upward trend.
 
-\begin{table}[H]
+\begin{table}[t]
 \centering
 \caption{Exam failure probability as a function of the number of quiz failures per run. Results are reported for GSM8K and MATH under the same $K=5$ evaluation protocol.}
 \label{tab:dose-response-gsm8k-math}
@@ -1921,7 +1661,7 @@ single run, showing a clear upward trend.
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -2008,7 +1748,7 @@ quiz failure rates by chunk position across all valid runs, and
 Table~\ref{tab:weak-chunk-position-gsm8k-math} reports the position distribution
 of weak chunks (i.e., chunks with $w_j \le 0.10$).
 
-\begin{table}[tbp]
+\begin{table}[t]
 \centering
 
 \begin{minipage}[t]{0.475\textwidth}
@@ -2297,7 +2037,7 @@ reliability, we group problems by their correct rate
 ($\text{correct\_rate} = n_{\text{correct}} / K$) and examine how
 saliency variance changes between groups.
 
-\begin{table}[H]
+\begin{table}[t]
 \centering
 \caption{Saliency variance by correct rate group (GSM8K and MATH).
 Lower correct rates correspond to higher saliency variance.}
@@ -2322,7 +2062,7 @@ Lower correct rates correspond to higher saliency variance.}
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -2444,7 +2184,7 @@ focusing on a single weak chunk.
 Both benchmarks contain degenerate items where quiz scores are high
 but exam performance fails. This shows that outcome only supervision cannot
 distinguish globally incorrect reasoning from localized late-stage
-failures, motivating chunk-aware reinforcement strategies.
+failures, motivating token-level reinforcement strategies.
 
 \end{enumerate}
 
@@ -2454,9 +2194,387 @@ results suggest that targeted reinforcement should be adapted to task
 difficulty. Late stage refinement is for structured, easier benchmarks,
 and broader structural stabilization is for harder reasoning tasks.
 
+% =============================================================================
+% Section 4.3.6: Online Saliency Guided Token Reweighting Improvements
+%                on Weak Reasoning Chunks
+% =============================================================================
+\subsection{Online Saliency Guided Token Reweighting Improvements}
+\label{sec:saliency-grpo-results}
 
-\subsection{Reward Reweighting Improvements on Weak Reasoning Chunks}
-\label{sec:weak_chunks}
+Section~\ref{sec:saliency_chunks} established that chunk-level saliency reveals meaningful structural
+variation in how reasoning segments contribute to the final exam outcome, particularly on the MATH
+benchmark where over 40\% of valid problems exhibit non-uniform saliency patterns.  This section evaluates
+whether the online saliency guided token reweighting mechanism described in Section~\ref{sec:online-saliency-grpo} can translate
+these diagnostic signals into concrete improvements.  We compare the standard GRPO model
+(\textsc{Qwen2.5-7B-Instruct-GRPO}) against the saliency-augmented variant
+(\textsc{Qwen2.5-7B-Instruct-SaliencyGRPO}), both trained on the same 5{,}000-problem
+Data~A dataset with identical hyperparameters except for the two saliency-specific parameters
+($\alpha=1.5$, $\delta=0.1$) and an extended training duration of two epochs (Section~\ref{sec:exp-saliency-grpo}).
+
+To isolate the effect of saliency-guided reweighting at the chunk level, we re-run the same saliency evaluation protocol used in Section~\ref{sec:saliency_chunks}, using the same 500 problems from each of the GSM8K and MATH training sets and evaluating each problem $K=5$ times. The exam-weighted saliency weights ${w_j}$ and pattern classifications are computed using the same procedure as before.
+
+\subsubsection{Benchmark Performance}
+
+As reported in Table~\ref{tab:grpo_three_models}, the SaliencyGRPO model improves on the harder benchmarks. MATH improves from 76.8\% to 78\% Pass@1 ($+1.2$~pp), and MATH500 improves from 49.0\% to 71.6\% ($+22.6$~pp). 
+On AIME~2024, the model achieves 23.3\% Pass@5 and 16.7\% Con@64, the highest Pass@5 among all configurations in Table~\ref{tab:grpo_three_models}, surpassing both standard GRPO (13.3\%) and the Data~B variant (16.7\%). 
+On GSM8K, performance improves from 91\% to 94.5\% Pass@1 ($+3.5$~pp), also the best result among all configurations.
+
+These benchmark results show that token reweighting leads to meaningful overall improvement, with the strongest gains on more challenging reasoning tasks. The following analysis examines how these improvements are reflected in the chunk-level saliency structure.
+
+\subsubsection{Degenerate Item Recovery}
+
+A degenerate item is one where all $K=5$ exam runs produce incorrect answers, yielding
+an uninformative saliency distribution that is excluded from pattern classification.
+Degenerate items represent problems that the model cannot solve at all under the evaluation protocol.
+Table~\ref{tab:degenerate-recovery} summarizes the degenerate statistics for both models.
+
+\begin{table}[t]
+\centering
+\caption{Degenerate item statistics for GRPO and SaliencyGRPO.  SaliencyGRPO reduces the number
+of completely unsolvable problems on both benchmarks, with the most pronounced recovery on MATH.}
+\label{tab:degenerate-recovery}
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Dataset} & \textbf{Model} & \textbf{Degenerate} & \textbf{Proportion} & \textbf{Valid} & \textbf{Recovered} \\
+\midrule
+\multirow{2}{*}{GSM8K}
+  & GRPO          & 20  & 4.0\%  & 480 & --- \\
+  & SaliencyGRPO  & 12  & 2.4\%  & 488 & 12 \\
+\midrule
+\multirow{2}{*}{MATH}
+  & GRPO          & 130 & 26.0\% & 370 & --- \\
+  & SaliencyGRPO  & 96  & 19.2\% & 404 & 60 \\
+\bottomrule
+\end{tabular}
+\vspace{4pt}
+
+\raggedright\small
+\textit{Note.}  ``Recovered'' counts items that were degenerate under GRPO but became valid (at least one
+correct exam run) under SaliencyGRPO.  Some items that were valid under GRPO became
+degenerate under SaliencyGRPO (4 on GSM8K, 26 on MATH), so the net degenerate reduction is
+$-8$ and $-34$ respectively.
+\end{table}
+
+On MATH, 60 of 130 previously degenerate items (46.2\%) are recovered by SaliencyGRPO,
+achieving a mean correct rate of 0.613 after recovery.  On GSM8K, all 12 recovered items reach a mean correct rate of 0.850.  
+The reduction in degenerate items ($-34$ on MATH and $-8$ on GSM8K) indicates that saliency-guided training helps the model begin solving problems that were previously unsolvable, especially on harder benchmarks where the initial degenerate rate was high.
+
+\subsubsection{Overall Correct Rate Improvement}
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Dataset} & \textbf{GRPO} & \textbf{SaliencyGRPO} & \textbf{$\Delta$} \\
+\midrule
+GSM8K & 0.913 & 0.943 & $+$0.030 \\
+MATH  & 0.628 & 0.750 & $+$0.122 \\
+\bottomrule
+\end{tabular}
+\caption{Overall correct rate across all 500 matched problems ($K=5$ runs each).}
+\label{tab:overall-correct-rate}
+\end{table}
+
+Beyond degenerate recovery, we examine the correct rate across all 500 matched problems (including
+degenerate items with correct rate~=~0). Table~\ref{tab:overall-correct-rate} summarizes the aggregate run-level accuracy.
+
+On MATH, SaliencyGRPO improves the correct rate by 12.2 percentage
+points, from 0.628 to 0.750.  Of the 500 matched MATH problems, 172 (34.4\%) show improved
+correct rates, 56 (11.2\%) show degradation, and 272 (54.4\%) remain unchanged.  The asymmetry
+of improvements over degradations (a 3:1 ratio) indicates that the reweighting mechanism
+provides beneficial learning signals rather than benefiting some problems at the expense of
+others.  On GSM8K, improvements are more modest ($+3.0$~pp), consistent with the fact that the
+baseline GRPO model already achieves high accuracy on this easier benchmark.
+
+\subsubsection{Saliency Pattern Redistribution}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{ll rr rr}
+\toprule
+& & \multicolumn{2}{c}{\textbf{GRPO}} & \multicolumn{2}{c}{\textbf{SaliencyGRPO}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6}
+\textbf{Dataset} & \textbf{Pattern} & \textbf{Count (\%)} & \textbf{CR} & \textbf{Count (\%)} & \textbf{CR} \\
+\midrule
+\multirow{5}{*}{\rotatebox[origin=c]{90}{GSM8K}}
+  & Uniform           & 414 (86.3\%) & 0.955 & 397 (81.4\%) & 0.969 \\
+  & Weak chunk        &  49 (10.2\%) & 0.959 &  69 (14.1\%) & 0.974 \\
+  & Single dominant   &  15 ~(3.1\%) & 0.813 &  19 ~(3.9\%) & 0.916 \\
+  & Shifted dominance &   2 ~(0.4\%) & 1.000 &   1 ~(0.2\%) & 1.000 \\
+  & Valid total       & 480          &       & 488          &       \\
+\midrule
+\multirow{5}{*}{\rotatebox[origin=c]{90}{MATH}}
+  & Uniform           & 220 (59.5\%) & 0.856 & 224 (55.4\%) & 0.921 \\
+  & Weak chunk        &  78 (21.1\%) & 0.754 & 101 (25.0\%) & 0.863 \\
+  & Single dominant   &  55 (14.9\%) & 0.786 &  70 (17.3\%) & 0.797 \\
+  & Shifted dominance &   9 ~(2.4\%) & 0.889 &   5 ~(1.2\%) & 0.920 \\
+  & Valid total       & 370          &       & 404          &       \\
+\bottomrule
+\end{tabular}
+\caption{Saliency pattern distribution for GRPO and SaliencyGRPO on valid (non-degenerate) items.
+Correct rate is the mean proportion of the $K=5$ runs producing a correct final answer.}
+\label{tab:pattern-comparison}
+\end{table}
+
+
+\paragraph{Correct rate improvements are widespread}
+On MATH, every saliency pattern shows higher mean correct rates under SaliencyGRPO.
+Uniform items improve from 0.856 to 0.921 ($+6.5$~pp), weak chunk items from 0.754 to 0.863
+($+10.9$~pp), and single dominant items from 0.786 to 0.797 ($+1.1$~pp).  The largest absolute
+gain appears among weak chunk items, suggesting that the token reweighting mechanism
+is particularly effective at strengthening reasoning segments that the saliency diagnostic identifies
+as fragile.
+
+\paragraph{Increased non-uniform fraction.}
+Perhaps counterintuitively, SaliencyGRPO produces a higher proportion of non-uniform saliency
+patterns (18.6\% to 25.0\% weak chunk on MATH, 10.2\% to 14.1\% on GSM8K).  This does
+not indicate degraded reasoning; rather, it reflects two complementary factors.
+First, the 34 recovered degenerate items (on MATH) that transition from unsolvable to partially
+solvable tend to exhibit non-uniform saliency because the model has not yet fully mastered all
+reasoning chunks for these newly accessible problems.  Second, as overall performance improves
+and more exam runs succeed, the saliency signal becomes more discriminative, enabling
+finer-grained identification of relatively weaker chunks even among generally well-solved problems.
+In both cases, the increased non-uniform fraction represents \emph{improved diagnostic resolution}
+rather than weakened reasoning.
+
+\subsubsection{Weak Chunk Tracking Analysis}
+
+To understand whether SaliencyGRPO specifically repairs the weak reasoning segments identified
+by the GRPO model's saliency, we perform a per-item tracking analysis on the 500 matched
+problems.  For each problem, we check whether it contained a weak chunk ($w_j < 0.10$)
+under GRPO and whether the weakness persists, resolves, or newly appears under SaliencyGRPO.
+Table~\ref{tab:weak-chunk-tracking} summarizes the transitions.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Transition} & \textbf{GSM8K} & \textbf{MATH} \\
+\midrule
+Had weak $\to$ fixed       & 10 & 30 \\
+Still weak                 & 54 & 98 \\
+New weak                   & 32 & 71 \\
+\bottomrule
+\end{tabular}
+\caption{Weak chunk transition tracking between GRPO and SaliencyGRPO.  ``Had weak $\to$ fixed'' counts
+items that had at least one weak chunk under GRPO but none under SaliencyGRPO.  ``New weak'' counts
+items with no weak chunk under GRPO but at least one under SaliencyGRPO.  ``Still weak'' counts items
+with weak chunks under both models.  Items that are degenerate in either model are excluded.}
+\label{tab:weak-chunk-tracking}
+\end{table}
+
+On MATH, 30 out of 128 items that had weak chunks under GRPO (23.4\%) no longer exhibit
+weak chunks under SaliencyGRPO, indicating that the reweighting mechanism successfully
+repairs a subset of previously fragile reasoning segments.  However, 71 new weak chunk items
+appear, primarily among the 60 recovered degenerate items and among problems where improved
+overall performance now exposes previously undetectable chunk-level variation.
+
+For the 128 MATH items that had weak chunks under GRPO, the correct rate change breaks
+down as follows: 40 improved (31.2\%, mean $\Delta = +0.425$), 25 degraded (19.5\%, mean
+$\Delta = -0.360$), and 63 remained unchanged (49.2\%).  The improvement to degradation ratio
+of 1.6:1 on previously weak items parallels the 3.1:1 ratio observed across all items, indicating
+that saliency-guided reweighting benefits weak chunk items roughly in proportion to its overall effect
+rather than disproportionately targeting them.
+
+\subsubsection{Weak Chunk Positional Distribution}
+
+
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.475\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    bar width=10pt,
+    width=\textwidth,
+    height=5.0cm,
+    ylabel={Proportion (\%)},
+    symbolic x coords={First, Middle, Last},
+    xtick=data,
+    ymin=0, ymax=60,
+    enlarge x limits=0.22,
+    ymajorgrids=true,
+    grid style=dashed,
+    title={\small (a) GSM8K},
+    legend style={at={(0.5,-0.4)},anchor=south, font=\scriptsize, draw=none, legend columns=2},
+    bar shift auto,
+]
+% GRPO
+\addplot[fill=cbBlue,
+    nodes near coords,
+    every node near coord/.append style={
+        font=\scriptsize,
+        /pgf/number format/fixed,
+        /pgf/number format/precision=1,
+        anchor=south,
+        yshift=1pt,
+        xshift=-4pt % 往左移，避免跟橘色重疊
+    }] coordinates {
+    (First, 18.37)
+    (Middle, 32.65)
+    (Last, 48.98)
+};
+\addlegendentry{GRPO}
+% SaliencyGRPO
+\addplot[fill=cbOrange,
+    nodes near coords,
+    every node near coord/.append style={
+        font=\scriptsize,
+        /pgf/number format/fixed,
+        /pgf/number format/precision=1,
+        anchor=south,
+        yshift=1pt,
+        xshift=4pt % 往右移
+    }] coordinates {
+    (First, 15.94)
+    (Middle, 31.88)
+    (Last, 52.17)
+};
+\addlegendentry{SaliencyGRPO}
+\end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\hspace{0.03\textwidth}
+\begin{subfigure}[t]{0.475\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    bar width=10pt,
+    width=\textwidth,
+    height=5.0cm,
+    ylabel={Proportion (\%)},
+    symbolic x coords={First, Middle, Last},
+    xtick=data,
+    ymin=0, ymax=60,
+    enlarge x limits=0.22,
+    ymajorgrids=true,
+    grid style=dashed,
+    title={\small (b) MATH},
+    legend style={at={(0.5,-0.4)},anchor=south, font=\scriptsize, draw=none, legend columns=2},
+    bar shift auto,
+]
+% GRPO
+\addplot[fill=cbBlue,
+    nodes near coords,
+    every node near coord/.append style={
+        font=\scriptsize,
+        /pgf/number format/fixed,
+        /pgf/number format/precision=1,
+        anchor=south,
+        yshift=1pt,
+        xshift=-4pt % 往左移，避免跟橘色重疊
+    }] coordinates {
+    (First, 37.18)
+    (Middle, 25.64)
+    (Last, 37.18)
+};
+\addlegendentry{GRPO}
+% SaliencyGRPO
+\addplot[fill=cbOrange,
+    nodes near coords,
+    every node near coord/.append style={
+        font=\scriptsize,
+        /pgf/number format/fixed,
+        /pgf/number format/precision=1,
+        anchor=south,
+        yshift=1pt,
+        xshift=4pt % 往右移
+    }] coordinates {
+    (First, 37.62)
+    (Middle, 25.74)
+    (Last, 36.63)
+};
+\addlegendentry{SaliencyGRPO}
+\end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\caption{Weak chunk positional distribution for GRPO vs.\ SaliencyGRPO.
+\textbf{(a)}~On GSM8K, weak chunks remain concentrated at the last position under both models
+(49.0\% $\to$ 52.2\%), preserving the late-stage bottleneck pattern.
+\textbf{(b)}~On MATH, the symmetric first/last distribution is essentially unchanged
+(37.2\%/37.2\% $\to$ 37.6\%/36.6\%), indicating that saliency-guided reweighting does not
+selectively eliminate weak chunks at particular positions.}
+\label{fig:weak-pos-comparison}
+\end{figure}
+
+Figure~\ref{fig:weak-pos-comparison} compares the positional distribution of weak chunks between the two models.
+The positional profiles are remarkably stable across the two models.  On GSM8K, weak chunks
+continue to concentrate at the last position (49.0\% $\to$ 52.2\%), consistent with the late-stage
+integration bottleneck identified in Section~\ref{sec:positional-analysis}.  On MATH, the symmetric
+first/last distribution remains essentially unchanged (37.2\%/37.2\% $\to$ 37.6\%/36.6\%).
+This stability indicates that online saliency reweighting does not selectively resolve weak chunks
+at particular positional locations.  Instead, it improves overall correct rates uniformly
+across chunk positions, suggesting that the mechanism operates primarily by strengthening the
+model's ability to generate higher-quality complete trajectories rather than by surgically repairing
+specific positional bottlenecks.
+
+\subsubsection{Entropy and Stability}
+
+\begin{table}[t]
+\centering
+\begin{tabular}{llcccc}
+\toprule
+& & \multicolumn{2}{c}{\textbf{Entropy $\hat{H}$}} & \multicolumn{2}{c}{\textbf{LOO Stability}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6}
+\textbf{Dataset} & \textbf{Model} & \textbf{Mean} & \textbf{Std} & \textbf{Mean} & \textbf{Std} \\
+\midrule
+\multirow{2}{*}{GSM8K}
+  & GRPO          & 0.939 & 0.172 & 0.00578 & 0.01442 \\
+  & SaliencyGRPO  & 0.917 & 0.199 & 0.00521 & 0.01375 \\
+\midrule
+\multirow{2}{*}{MATH}
+  & GRPO          & 0.780 & 0.324 & 0.01600 & 0.03213 \\
+  & SaliencyGRPO  & 0.739 & 0.355 & 0.01227 & 0.02634 \\
+\bottomrule
+\end{tabular}
+\caption{Saliency entropy and stability statistics.  Lower entropy indicates more concentrated
+(non-uniform) saliency distributions; lower LOO-std indicates more stable saliency estimates.}
+\label{tab:entropy-stability}
+\end{table}
+
+SaliencyGRPO produces slightly lower mean entropy on both benchmarks (0.939~$\to$~0.917 on
+GSM8K and 0.780~$\to$~0.739 on MATH), consistent with the increased non-uniform fraction observed in the pattern analysis. 
+At the same time, leave-one-out stability improves, with LOO-std decreasing from 0.01600 to 0.01227 on MATH, showing a 23.3\% reduction.
+This combination of lower entropy and higher stability means that the saliency signals from SaliencyGRPO are more focused and more consistent across repeated runs. 
+In other words, when we observe chunk-level differences under SaliencyGRPO, those differences are more likely to reflect real changes in reasoning structure rather than random variation.
+
+
+\subsubsection{Summary and Interpretation}
+
+The saliency-level analysis shows that online saliency-guided token reweighting improves performance in several complementary ways.
+
+\begin{enumerate}
+\item \textbf{Degenerate recovery.} 
+On MATH, 60 previously unsolvable problems become at least partially solvable, accounting for a substantial portion of the overall correct rate gain.
+These recovered items tend to exhibit non-uniform saliency, indicating that newly acquired problem-solving ability is still structurally uneven.
+
+\item \textbf{Overall correct rate improvement.}
+Every saliency pattern shows higher mean correct rates under SaliencyGRPO, with the largest absolute gains on weak chunk items ($+10.9$~pp on MATH).  
+The improvement-to-degradation ratio of 3:1 across all MATH items
+indicates that the reweighting mechanism provides a net positive training signal.
+
+\item \textbf{Improved saliency stability.}  
+Leave-one-out stability improves by 23.3\% on MATH,
+indicating that the model's chunk-level reasoning structure becomes more consistent across repeated evaluations, 
+even as saliency distributions become more differentiated.
+
+\item \textbf{Preserved positional structure.}
+The positional distribution of weak chunks remains stable, suggesting that the improvements operate through trajectory-level quality enhancement
+rather than position-specific repair.
+\end{enumerate}
+
+These results are consistent with the design rationale described in Section~3.7. 
+Because GRPO operates at the trajectory level, the saliency reweighting mechanism cannot surgically repair a specific weak chunk in isolation. It can only amplify the learning signal on weak-chunk tokens within trajectories that are already above the group mean.
+The practical consequence is a natural curriculum in which, as the model improves and generates more positive advantage trajectories, the reweighting becomes progressively more effective, boosting both overall accuracy and the structural coherence of chunk-level reasoning.
+The mechanism is most impactful on MATH, where the baseline model has substantial room
+for improvement and where the saliency diagnostic identifies meaningful chunk-level variation.
+On GSM8K, where the baseline already achieves high accuracy with predominantly uniform
+saliency, the additional reweighting provides limited marginal benefit, as expected given the diagnostic findings of Section~\ref{sec:saliency_chunks}.
+
 
 %% ============================================================================
 %% NEW TABLE: Dataset comparison (Training Data A vs B)
@@ -2629,18 +2747,6 @@ enough to run under realistic compute constraints.
 
 \section{Future Work}
 There are several directions that would meaningfully strengthen and extend this work.
-
-\paragraph{Chunk-level advantage and fine-grained credit assignment.}
-A more fundamental extension is to move beyond trajectory-level optimization and introduce
-chunk-level advantage estimation. Instead of assigning a single scalar reward to the entire rollout,
-one could segment the solution into reasoning chunks and estimate advantages at the chunk level.
-Policy updates would then weight token log-probabilities according to the advantage of the chunk
-they belong to, enabling localized reinforcement or suppression of specific reasoning segments.
-Such a mechanism would directly address the credit assignment limitation identified in this thesis,
-where trajectory-level GRPO functions primarily as a selection bias over complete solutions.
-Implementing chunk-level advantages would require modifications to the training loop, including
-per-chunk reward modeling or value estimation, but it offers a path toward true weak reasoning repair rather than indirect selection.
-
 
 \paragraph{Stronger quiz generation and verification.}
 A natural next step is to improve quiz quality while keeping the pipeline automated. For example,
