@@ -1228,13 +1228,23 @@ Pass@1 uses greedy decoding. For Pass@$k$ with $k > 1$, one greedy response is c
 \section{Results Discussion}
 \label{sec:results_discussion}
 
-% \begin{figure}[t]
-%     \centering
-%     \includegraphics[width=1\textwidth]
-%     {Image/all_model_comparison.png}
-%     \caption{Benchmark comparison of all configurations.}
-%     \label{fig:grpo_only_reward}
-% \end{figure}
+This section analyzes the experimental results from multiple perspectives to clarify how different
+training components contribute to mathematical reasoning performance.
+We begin by establishing supervised fine-tuning as a baseline, and then examine the impact of
+reinforcement learning with quiz-augmented and step-based rewards as the primary method.
+Subsequent ablation studies isolate the roles of supervised fine-tuning initialization and
+intermediate reward components.
+Finally, we provide comparative evaluations against existing language models and conduct
+fine-grained analyses of chunk-level saliency and targeted reinforcement, offering insights into
+how and where reinforcement learning improves long-horizon reasoning behavior.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=1\textwidth]
+    {Image/all_model_comparison.png}
+    \caption{Benchmark comparison of all configurations.}
+    \label{fig:grpo_only_reward}
+\end{figure}
 
 \begin{table}[t]
 \centering
@@ -1296,21 +1306,10 @@ MATH500 and AIME~2024 is evaluated on their full test set. All models use Qwen2.
 \end{minipage}
 \end{table}
 
-This section analyzes the experimental results from multiple perspectives to clarify how different
-training components contribute to mathematical reasoning performance.
-We begin by establishing supervised fine-tuning as a baseline, and then examine the impact of
-reinforcement learning with quiz-augmented and step-based rewards as the primary method.
-Subsequent ablation studies isolate the roles of supervised fine-tuning initialization and
-intermediate reward components.
-Finally, we provide comparative evaluations against existing language models and conduct
-fine-grained analyses of chunk-level saliency and targeted reinforcement, offering insights into
-how and where reinforcement learning improves long-horizon reasoning behavior.
-
-
 \subsection{Baseline Performance after Supervised Fine-Tuning}
 \label{sec:baseline_sft}
 
-Table~\ref{tab:grpo_three_models} summarizes the performance of multiple Qwen2.5-7B variants under
+Figure~\ref{fig:grpo_only_reward} and Table~\ref{tab:grpo_three_models} summarizes the performance of multiple Qwen2.5-7B variants under
 the same evaluation pipeline.
 Compared with the \textit{Base} model, \textit{Qwen2.5-7B-Instruct} exhibits a substantial jump on
 all math benchmarks (e.g., GSM8K: 52.5 $\rightarrow$ 87.0, MATH: 63.2 $\rightarrow$ 75.5, MATH500:
@@ -1598,7 +1597,7 @@ These results indicate that quiz failures are predictive of exam
 failures on both benchmarks, although the coupling is substantially
 stronger on GSM8K than on the harder MATH dataset.
 
-\begin{table}[H]
+\begin{table}[t]
 \centering
 \caption{Contingency table for quiz and exam outcomes. Quiz failure is a strong predictor of exam failure.}
 \label{tab:quiz-exam-contingency-gsm8k-math}
@@ -1617,10 +1616,22 @@ stronger on GSM8K than on the harder MATH dataset.
 \end{tabular}
 \end{table}
 
+\paragraph{Scaling effect of quiz failures.}
+Beyond the binary distinction, Table~\ref{tab:dose-response-gsm8k-math} and
+Figure~\ref{fig:scaling-effect-line-chart-gsm8k-math} show that the probability of exam failure 
+increases monotonically with the number of quiz failures in a
+single run, showing a clear upward trend.
+The growth suggests that quiz failures are not
+independent. A run in which multiple intermediate steps fail is more
+likely to produce an incorrect final answer.
+This validates the design of the quiz reward in Section~\ref{sec:quiz-reward} as a
+meaningful intermediate supervision signal that quiz performance provides
+dense and graded feedback that strongly correlates with final answer
+correctness.
 
 \begin{table}[t]
 \centering
-\caption{Exam failure probability as a function of the number of quiz failures per run. Results are reported for GSM8K and MATH under the same $K=5$ evaluation protocol.}
+\caption{Exam failure probability by number of quiz failures per run. Results are reported for GSM8K and MATH under the same $K=5$ evaluation protocol.}
 \label{tab:dose-response-gsm8k-math}
 \begin{tabular}{llcccc}
 \toprule
@@ -1642,25 +1653,14 @@ stronger on GSM8K than on the harder MATH dataset.
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=0.77\textwidth]{Image/scaling_effect_gsm8k_math.png}
-\caption{Exam failure probability increases with the number of quiz failures per run on both GSM8K and MATH. The increase is sharper on GSM8K, while MATH exhibits a higher baseline failure rate even when all quizzes pass.}
+\caption{Exam failure probability increases with the number of quiz failures per run under K=5 evaluation on both GSM8K and MATH.}
 \label{fig:scaling-effect-line-chart-gsm8k-math}
 \end{figure}
 
-\paragraph{Scaling effect of quiz failures.}
-Beyond the binary distinction, Table~\ref{tab:dose-response-gsm8k-math} and
-Figure~\ref{fig:scaling-effect-line-chart-gsm8k-math} show that the probability of exam failure 
-increases monotonically with the number of quiz failures in a
-single run, showing a clear upward trend.
-The growth suggests that quiz failures are not
-independent. A run in which multiple intermediate steps fail is more
-likely to produce an incorrect final answer.
-This validates the design of the quiz reward in Section~\ref{sec:quiz-reward} as a
-meaningful intermediate supervision signal that quiz performance provides
-dense and graded feedback that strongly correlates with final answer
-correctness.
+
 
 % ────────────────────────────────────────────────────────────
 \subsubsection{Positional Analysis of Quiz Failures and Weak Chunks}
@@ -2645,7 +2645,7 @@ This result supports the broader observation that reinforcement learning works b
 This thesis makes three main contributions:
 
 \begin{itemize}
-    \item Saliency based method for measuring how different reasoning chunks influence final correctness.
+    \item Saliency based method for measuring how reasoning chunks influence final correctness.
     \item Structured credit assignment in reinforcement learning for reasoning tasks.
     \item Saliency guided token reweighting mechanism that amplifies loss on weaker reasoning chunks when their advantage is positive.
 \end{itemize}
