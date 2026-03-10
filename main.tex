@@ -112,7 +112,7 @@
 
 
 \begin{flushright}
-    Date: February 1, 2026
+    Date: March 4, 2026
 \end{flushright}
 
 {\centering
@@ -232,7 +232,7 @@ Large language models perform strongly on many tasks but remain unreliable on co
 
 We adopt Group Relative Policy Optimization (GRPO) to construct a fully automated reinforcement learning framework. To provide intermediate supervision without human annotation, we automatically generate short quiz questions that test key reasoning checkpoints. Quiz rewards complement final answer rewards, enabling structured feedback while keeping the pipeline scalable. Supervised fine tuning is explored for initialization, but reinforcement learning drives the main gains.
 
-The central contribution is a saliency guided token reweighting mechanism.We perform chunk level saliency analysis to estimate the association between each reasoning chunk and final correctness. The analysis shows that only a subset of reasoning chunks carries decisive influence. We therefore selectively re-weight token level losses in GRPO, amplifying weak reasoning chunks only when their advantage is positive, in order to strengthen constructive credit assignment during optimization.
+The central contribution is a saliency guided token reweighting mechanism.We perform chunk level saliency analysis to estimate the association between each reasoning chunk and final correctness. The analysis shows that only a subset of reasoning chunks carries decisive influence. We therefore selectively reweight token level losses in GRPO, amplifying weak reasoning chunks only when their advantage is positive, in order to strengthen constructive credit assignment during optimization.
 
 Across GSM8K, MATH, MATH 500, and AIME benchmarks, saliency guided GRPO yields consistent and often superior performance compared to supervised baselines and standard GRPO variants. More complex reward designs yield limited additional benefit, suggesting that structurally informed credit allocation is more effective than simply adding more reward components.
 \endgroup
@@ -250,32 +250,57 @@ Across GSM8K, MATH, MATH 500, and AIME benchmarks, saliency guided GRPO yields c
 
 \chapter{Introduction}
 \section{Background}
-Large language models (LLMs) have demonstrated remarkable capability in natural language understanding and generation. 
-Recent work has demonstrated that LLMs can perform multi-step mathematical reasoning when guided by chain-of-thought prompting or reinforcement learning. 
-However, as reasoning tasks grow longer and more complex, optimization becomes increasingly sensitive to how learning signals are distributed across intermediate steps.
 
-Reinforcement learning methods such as Group Relative Policy Optimization (GRPO) have been applied to improve reasoning performance by comparing multiple complete trajectories sampled from the same prompt. 
+Large language models (LLMs) have demonstrated strong performance across a wide range of language and reasoning tasks~\cite{chowdhery2022palmscalinglanguagemodeling, touvron2023llamaopenefficientfoundation}, including natural language understanding and question answering \cite{brown2020languagemodelsfewshotlearners,raffel2023exploringlimitstransferlearning}, program synthesis and code generation \cite{chen2021evaluatinglargelanguagemodels,nijkamp2023codegenopenlargelanguage}, and multi-step mathematical reasoning \cite{wei2023chainofthoughtpromptingelicitsreasoning,lewkowycz2022solvingquantitativereasoningproblems,shao2024deepseekmathpushinglimitsmathematical}. 
+This progress has been largely driven by scaling model size, data, and compute, which follow predictable performance trends described by neural scaling laws~\cite{kaplan2020scalinglawsneurallanguage}.
+Recent work has further shown that reasoning capabilities can be substantially improved through techniques such as chain-of-thought prompting and self-consistency decoding, which encourage models to generate intermediate reasoning steps before producing a final answer \cite{wei2023chainofthoughtpromptingelicitsreasoning,wang2023selfconsistencyimproveschainthought, kojima2023largelanguagemodelszeroshot}. 
+Other approaches iteratively improve reasoning outputs through self-feedback loops, such as Self-Refine~\cite{madaan2023selfrefineiterativerefinementselffeedback}.
+Reinforcement learning has emerged as an effective approach for aligning large language models with task objectives and improving reasoning performance \cite{ouyang2022traininglanguagemodelsfollow,schulman2017proximalpolicyoptimizationalgorithms,Guo_2025, christiano2023deepreinforcementlearninghuman, openai2024openaio1card}.
+Recent work has also explored alternatives to reinforcement learning, such as Direct Preference Optimization (DPO), which directly optimizes preference data without an explicit reward model~\cite{rafailov2024directpreferenceoptimizationlanguage}.
+Another line of work focuses on alignment through AI feedback rather than human labeling, such as Constitutional AI, which uses self-critique and rule-based feedback to guide model behavior~\cite{bai2022constitutionalaiharmlessnessai}.
+
+However, as reasoning tasks grow longer and more complex, optimization becomes increasingly sensitive to how learning signals are distributed across intermediate steps. 
+Reinforcement learning methods such as Group Relative Policy Optimization (GRPO) have been applied to improve reasoning performance by comparing multiple complete trajectories sampled from the same prompt and optimizing the policy according to relative advantages among generated outputs \cite{Guo_2025}. 
 Unlike step-level methods that rely on explicit value functions, GRPO performs trajectory-level optimization by assigning scalar rewards to full reasoning outputs and adjusting policy updates based on group-relative advantages.
 
 While effective in stabilizing training, trajectory-level optimization implicitly treats all tokens within a positively rewarded trajectory as equally responsible for success. 
 In long reasoning chains, this assumption is unlikely to hold. 
-Some intermediate steps may carry decisive influence on the final answer, while others may be redundant, unstable, or only weakly correlated with correctness.
+Some intermediate steps may carry decisive influence on the final answer, while others may be redundant, unstable, or only weakly correlated with correctness. 
+Recent studies on process supervision and verifier-based training have similarly observed that different reasoning steps contribute unevenly to final correctness, suggesting that more structured credit assignment may benefit reasoning optimization \cite{lightman2023letsverifystepstep,cobbe2021trainingverifierssolvemath, kazemnejad2025vinepporefiningcreditassignment}.
 
 This observation motivates a closer examination of how credit flows through multi-step reasoning processes. 
 Rather than viewing reasoning trajectories as flat token sequences, it may be more appropriate to consider their internal structure and allocate learning signals according to structural contribution.
+% Large language models (LLMs) have demonstrated remarkable capability in natural language understanding and generation. 
+% Recent work has demonstrated that LLMs can perform multi-step mathematical reasoning when guided by chain-of-thought prompting or reinforcement learning. 
+% However, as reasoning tasks grow longer and more complex, optimization becomes increasingly sensitive to how learning signals are distributed across intermediate steps.
+
+% Reinforcement learning methods such as Group Relative Policy Optimization (GRPO) have been applied to improve reasoning performance by comparing multiple complete trajectories sampled from the same prompt. 
+% Unlike step-level methods that rely on explicit value functions, GRPO performs trajectory-level optimization by assigning scalar rewards to full reasoning outputs and adjusting policy updates based on group-relative advantages.
+
+% While effective in stabilizing training, trajectory-level optimization implicitly treats all tokens within a positively rewarded trajectory as equally responsible for success. 
+% In long reasoning chains, this assumption is unlikely to hold. 
+% Some intermediate steps may carry decisive influence on the final answer, while others may be redundant, unstable, or only weakly correlated with correctness.
+
+% This observation motivates a closer examination of how credit flows through multi-step reasoning processes. 
+% Rather than viewing reasoning trajectories as flat token sequences, it may be more appropriate to consider their internal structure and allocate learning signals according to structural contribution.
 
 \section{Large Language Model and Mathematical Reasoning}
 
-Mathematical reasoning provides a structured domain for studying multi-step inference in language models. 
+Mathematical reasoning provides a structured domain for studying multi-step inference in language models, and recent work has explored generating executable reasoning programs to solve mathematical problems through Program-of-Thought prompting~\cite{chen2023programthoughtspromptingdisentangling}.
 Benchmarks such as GSM8K~\cite{cobbe2021trainingverifierssolvemath}, MATH~\cite{hendrycksmath2021}, and AIME~\cite{AIMEProblemsandSolutions-AOPSWiki} competition problems require models to perform sequential transformations, algebraic manipulation, combinatorial reasoning, and symbolic deduction. 
 Successful solutions typically involve intermediate computations whose correctness is necessary for reaching the final answer.
 
 Prior work has demonstrated that large language models can perform multi-step reasoning when guided by techniques such as chain-of-thought prompting~\cite{wei2023chainofthoughtpromptingelicitsreasoning} and reinforcement learning based optimization~\cite{shao2024deepseekmathpushinglimitsmathematical, schulman2017proximalpolicyoptimizationalgorithms}. 
+Subsequent work has further extended these ideas by exploring structured search over reasoning trajectories, such as Tree-of-Thought prompting~\cite{yao2023treethoughtsdeliberateproblem}.
+Another line of work decomposes complex problems into simpler subproblems using least-to-most prompting strategies~\cite{zhou2023leasttomostpromptingenablescomplex}.
 These approaches enable models to produce explicit reasoning traces, allowing intermediate steps to be examined and evaluated during training and inference.
+Beyond pure chain-of-thought reasoning, recent work has explored integrating reasoning with external actions or tool usage. For example, ReAct interleaves reasoning traces with environment interactions to improve problem solving~\cite{yao2023reactsynergizingreasoningacting}.
+Similarly, Toolformer enables language models to autonomously learn when to invoke external tools during reasoning, further expanding the capabilities of LLM-based agents~\cite{schick2023toolformerlanguagemodelsteach}. Reflexion further extends this paradigm by enabling language models to iteratively refine their reasoning using self-generated feedback and memory of past failures~\cite{shinn2023reflexionlanguageagentsverbal}.
 
 Existing approaches for improving mathematical reasoning performance can be broadly categorized into supervised fine-tuning and reinforcement learning. 
 Supervised methods train models to imitate high-quality reasoning trajectories collected from curated datasets or produced through chain-of-thought prompting. 
 Reinforcement learning methods, in contrast, optimize policies using reward signals derived from final answer correctness, or leverage step-level verification via human-annotated process supervision~\cite{lightman2023letsverifystepstep}.
+An important distinction in this space is between outcome-based and process-based feedback. Uesato et al.~\cite{uesato2022solvingmathwordproblems} provide the first systematic comparison on GSM8K, showing that outcome supervision achieves comparable final answer accuracy with less annotation, but process supervision is necessary for producing correct intermediate reasoning steps.
 
 Although reinforcement learning has shown promising empirical gains, most implementations operate at either the full-trajectory level or uniformly across tokens. 
 As a result, gradient updates reinforce all parts of a positively rewarded trajectory equally, even though different reasoning segments may contribute unevenly to the final outcome. 
@@ -288,10 +313,11 @@ If some reasoning steps play a much larger role in producing the correct answer,
 The fundamental motivation of this thesis is that multi-step reasoning is structurally different. 
 Not all intermediate reasoning segments contribute equally to the final correctness. 
 Empirical analysis of reasoning traces reveals that chunk-level contribution distributions are often highly skewed.
-A small subset of reasoning segments accounts for a large proportion of successful outcomes, while others exhibit weak or unstable association with correctness.
+A small subset of reasoning segments accounts for a large proportion of successful outcomes, while others exhibit weak or unstable association with correctness. Prior work on process supervision has provided indirect evidence for this observation, showing that step-level feedback yields substantially different training outcomes than outcome-only supervision~\cite{uesato2022solvingmathwordproblems,lightman2023letsverifystepstep}, which implies that intermediate steps carry unequal importance for final correctness.
 
 Standard trajectory-level reinforcement learning does not explicitly account for this internal structure. 
 When a trajectory receives positive advantage, gradient updates reinforce all tokens uniformly. 
+Recent work on credit assignment in reinforcement learning for LLMs has shown that value-based methods often fail to distinguish the contribution of individual reasoning steps, performing close to a random baseline when evaluating alternative intermediate actions~\cite{kazemnejad2025vinepporefiningcreditassignment}.
 This uniform reinforcement may strengthen already stable segments while leaving fragile reasoning components under-optimized.
 
 We therefore investigate whether reinforcement learning can be improved by incorporating structural information about reasoning chunks. 
@@ -308,9 +334,9 @@ These challenges arise from limitations of supervised training signals, dataset 
 Understanding these challenges is important for developing more reliable and scalable reinforcement learning methods for reasoning tasks.
 
 \subsection{Limitations of Supervised Methods}
-Supervised fine-tuning (SFT) on question–answer pairs remains the most common approach for adapting LLMs to downstream tasks. While SFT improves surface-level accuracy, it provides no clear signal that distinguishes correct reasoning from accidental correctness. Models trained purely with supervised objectives often learn to mimic solution formats or exploit dataset regularities, rather than internalizing robust reasoning strategies.
+Supervised fine-tuning (SFT) on question–answer pairs remains the most common approach for adapting LLMs to downstream tasks. While SFT improves surface-level accuracy, it provides no clear signal that distinguishes correct reasoning from accidental correctness. Models trained purely with supervised objectives often learn to mimic solution formats or exploit dataset regularities, rather than internalizing robust reasoning strategies. Even large-scale synthetic datasets such as MetaMathQA~\cite{yu2024metamathbootstrapmathematicalquestions} primarily provide outcome-level supervision and do not guarantee the correctness of intermediate reasoning steps.
 
-Process supervision partially addresses this issue by training models on annotated intermediate steps. However, collecting high quality human-labeled reasoning traces is costly, time-consuming, and difficult to scale. Furthermore, annotated chains of thought may potentially reflect annotators' specific styles or biases, limiting the diversity of reasoning strategies that the model can learn. These drawbacks motivate the search for automated alternatives that preserve the benefits of process supervision without incurring its costs.
+Process supervision partially addresses this issue by training models on annotated intermediate steps~\cite{uesato2022solvingmathwordproblems, lightman2023letsverifystepstep}. However, collecting high quality human-labeled reasoning traces is costly, time-consuming, and difficult to scale. Furthermore, annotated chains of thought may potentially reflect annotators' specific styles or biases, limiting the diversity of reasoning strategies that the model can learn. These drawbacks motivate the search for automated alternatives that preserve the benefits of process supervision without incurring its costs.
 
 \subsection{Dataset Difficulty and Quality Issues}
 \begin{figure}[tbp]
@@ -364,7 +390,7 @@ Conversely, if the quizzes simply restate or closely duplicate the original prob
 \subsection{Complexity of Reward Engineering}
 Designing reinforcement learning rewards for reasoning is inherently challenging.
 The reward function must simultaneously encourage correct final answers, coherent intermediate reasoning, and well-structured solutions while remaining stable under policy optimization. 
-In practice, poorly designed rewards are often vulnerable to reward hacking, where the policy maximizes reward through superficial or trivial token sequences that satisfy surface-level criteria without performing genuine reasoning. 
+In practice, poorly designed rewards are often vulnerable to reward hacking~\cite{skalse2025definingcharacterizingrewardhacking}, where the policy maximizes reward through superficial or trivial token sequences that satisfy surface-level criteria without performing genuine reasoning. 
 
 Prior approaches such as Math-Shepherd address this issue by training process reward models, but these models can overfit to specific linguistic or structural patterns and introduce additional optimization complexity\cite{wang2024mathshepherdverifyreinforcellms}. In contrast, our goal is to design a simple yet effective reward signal that is fully automatic and robust to exploitation under reinforcement learning.
 
@@ -373,7 +399,7 @@ A significant and practical limitation of this work is the computational capacit
 
 Under this hardware setting, full-parameter fine-tuning of large language models is infeasible, both due to memory limitations and prohibitive training cost. As a result, all supervised fine-tuning and reinforcement learning experiments rely on Low-Rank Adaptation (LoRA)\cite{hu2021loralowrankadaptationlarge}. While LoRA significantly reduces memory usage, it also constrains the expressiveness of model updates and may limit the upper bound of achievable performance.
 
-Similarly, it is computationally impractical to train on the full available dataset with long generation lengths, large batch sizes, or extensive rollouts. Attempting to do so would lead to out-of-memory (OOM) errors or an excessive training cost. Consequently, dataset filtering, reduced batch sizes, limited group sampling, and conservative rollouts configurations are necessary trade-offs.
+Similarly, it is computationally impractical to train on the full available dataset with long generation lengths, large batch sizes, or extensive rollouts. Attempting to do so would lead to out-of-memory (OOM) errors or an excessive training cost. Consequently, dataset filtering, reduced batch sizes, limited group sampling, and conservative rollouts configurations are necessary trade-offs.  To partially mitigate the throughput bottleneck, we use vLLM~\cite{kwon2023efficientmemorymanagementlarge} for accelerated inference during rollout generation.
 
 % \bigskip
 % \noindent These challenges highlight the difficulty of designing reinforcement learning systems that can reliably improve multi-step reasoning. 
@@ -428,22 +454,24 @@ to other long-horizon reasoning tasks such as scientific problem solving, planni
 
 \chapter{Related Work}
 \section{Outcome and Process Supervision}
-Most early approaches to mathematical reasoning in large language models rely on outcome supervision, where training optimizes only the correctness of the final answer. While simple and scalable, this paradigm provides no direct feedback on intermediate reasoning steps, allowing models to rely on shallow patterns that do not generalize well to harder problems.
+Most early approaches to mathematical reasoning in large language models rely on outcome supervision, where training optimizes only the correctness of the final answer. While simple and scalable, this paradigm provides no direct feedback on intermediate reasoning steps, allowing models to rely on shallow patterns that do not generalize well to harder problems. Early work such as Cobbe et al.~\cite{cobbe2021trainingverifierssolvemath} demonstrates the use of trained verifiers for outcome-based evaluation on GSM8K, establishing a baseline for automated answer checking.
 
 The work “Let’s Verify Step by Step"\cite{lightman2023letsverifystepstep} introduces process supervision, which evaluates and rewards intermediate reasoning steps rather than only final outcomes. By training a verifier to assess step-by-step reasoning traces, the authors show that guiding the reasoning trajectory itself leads to substantial performance gains on challenging benchmarks such as MATH. This demonstrates that training objectives strongly influence reasoning behavior, and that step-level feedback can significantly improve long-horizon reasoning.
 
-Despite its effectiveness, process supervision depends on human-annotated reasoning traces, which are costly to collect and difficult to scale across domains. Annotation quality may also introduce stylistic biases. These limitations motivate the search for automated step-level supervision mechanisms that preserve the benefits of process supervision while maintaining the scalability of outcome-based training.
+Uesato et al.~\cite{uesato2022solvingmathwordproblems} provide the first systematic comparison between process-based and outcome-based feedback on a natural language reasoning task. Their results show that outcome supervision achieves comparable final-answer accuracy with substantially less annotation, but process supervision is necessary to ensure the correctness of intermediate reasoning steps. This finding establishes a key tension in the field between annotation efficiency and reasoning reliability.
+
+Despite its effectiveness, process supervision depends on human-annotated reasoning traces, which are costly to collect and difficult to scale across domains. The quality of the annotation may also introduce stylistic biases. These limitations motivate the search for automated step-level supervision mechanisms that preserve the benefits of process supervision while maintaining the scalability of outcome-based training.
 
 \section{Reinforcement Learning Without Supervised Fine-Tuning}
 While process supervision augments outcome supervision with explicit step-level signals, an alternative line of work investigates whether reinforcement learning alone can induce reasoning behaviors without any supervised fine-tuning or annotated chains of thought. DeepSeek-R1 represents a prominent example of this direction.
 
-DeepSeek-R1 demonstrates that large-scale reinforcement learning from outcome-based rewards can lead to the emergence of complex reasoning behaviors, including multi-step planning, self-verification, and error correction\cite{Guo_2025}. Notably, the model is trained without supervised fine-tuning on reasoning datasets or explicit process supervision. Instead, it relies on carefully designed reward signals and large-scale policy optimization to shape behavior.
+DeepSeek-R1 demonstrates that large-scale reinforcement learning from outcome-based rewards can lead to the emergence of complex reasoning behaviors, including multi-step planning, self-verification, and error correction\cite{Guo_2025}. Notably, the model is trained without supervised fine-tuning on reasoning datasets or explicit process supervision. Instead, it relies on carefully designed reward signals and large-scale policy optimization to shape behavior. Similarly, the OpenAI o1 model series is trained with large-scale reinforcement learning to reason using chain of thought, achieving state-of-the-art performance on mathematical and scientific reasoning benchmarks~\cite{openai2024openaio1card}.
 
 One of the most striking findings of DeepSeek-R1 is that reasoning structures can emerge implicitly under sufficient optimization pressure, even when the reward is defined primarily on final outcomes. This challenges the assumption that explicit process supervision is strictly necessary for reasoning. The work highlights the power of reinforcement learning as a general-purpose mechanism for inducing structured behaviors in LLMs.
 
 However, pure RL approaches come with important trade-offs. They typically require large-scale models, extensive compute, and massive amounts of interaction data to achieve stable and reliable reasoning. Training instability, reward hacking, and poor sample efficiency remain persistent challenges. Furthermore, the emergent reasoning behaviors are difficult to control or target, as the reward signal does not explicitly guide intermediate steps.
 
-In contrast to DeepSeek-R1, this thesis adopts a hybrid approach: supervised fine-tuning provides a strong initialization, while reinforcement learning refines reasoning behavior through structured but automated step-level signals. Rather than relying on emergent reasoning alone, we aim to explicitly guide reasoning at the step level without resorting to human annotation or large-scale reward models.
+% In contrast to DeepSeek-R1, this thesis adopts a hybrid approach. Supervised fine-tuning provides a strong initialization, while reinforcement learning refines reasoning behavior through structured but automated step-level signals. Rather than relying on emergent reasoning alone, we aim to explicitly guide reasoning at the step level without resorting to human annotation or large-scale reward models.
 
 \section{Verification Guided Monte Carlo Tree Search}
 Math-Shepherd is one of the most closely related works to this thesis, as it proposes a framework for step-by-step reasoning supervision without human-annotated chains of thought\cite{wang2024mathshepherdverifyreinforcellms}. Instead of relying on manual annotations, Math-Shepherd combines automatic verification with Monte Carlo Tree Search (MCTS) to construct step-level training signals for reinforcement learning.
@@ -454,17 +482,30 @@ A key contribution of Math-Shepherd is demonstrating that verification-guided se
 
 However, this approach introduces substantial computational and architectural complexity. MCTS requires repeated rollouts, tree maintenance, and verifier evaluations, making training expensive and sensitive to search hyperparameters. In addition, Math-Shepherd trains a process reward model (PRM) using supervision derived from automated verification and MCTS-based search, which may still overfit to specific reasoning patterns or verification-induced biases. These factors complicate tuning and may limit scalability, especially for smaller models or resource-constrained settings.
 
-In contrast, this thesis explores a simpler reinforcement learning framework that avoids explicit tree search and separate reward model training. Rather than performing MCTS over reasoning trajectories, we generate lightweight intermediate quizzes to probe partial reasoning states and selectively reinforce weak reasoning segments. This design preserves the core insight of Math-Shepherd, which is step-level feedback is critical for reasoning, while prioritizing simplicity, robustness, and ease of integration into standard policy optimization pipelines.
+In contrast, this thesis explores a simpler reinforcement learning framework that avoids explicit tree search and separate reward model training. Rather than performing MCTS over reasoning trajectories, we generate lightweight intermediate quizzes to probe partial reasoning states and selectively reinforce weak reasoning segments. This design preserves the core insight of Math-Shepherd that step-level feedback is critical for reasoning, while prioritizing simplicity, robustness, and ease of integration into standard policy optimization pipelines.
 
 \section{Incentivizing Search Behavior via Reinforcement Learning}
 R1-Searcher investigates how reinforcement learning can be used to explicitly incentivize search behaviors in large language model\cite{song2025r1searcherincentivizingsearchcapability}. Rather than focusing solely on final answer correctness, the work emphasizes the importance of intermediate exploration steps, showing that structured search policies can emerge when models are rewarded for effective information gathering and reasoning progression.
 
-This work is closely related to our thesis in its recognition that reasoning is a sequential decision-making process, where intermediate actions critically influence final outcomes. However, R1-Searcher primarily targets retrieval and search efficiency, whereas our work focuses on improving internal reasoning quality through quiz-based intermediate evaluation. Both approaches highlight the importance of shaping intermediate behaviors via reinforcement learning rather than relying on outcome-only rewards.
+This work is closely related to our thesis in its recognition that reasoning is a sequential decision making process, where intermediate actions critically influence final outcomes. However, R1-Searcher primarily targets retrieval and search efficiency, whereas our work focuses on improving internal reasoning quality through quiz-based intermediate evaluation. Both approaches highlight the importance of shaping intermediate behaviors via reinforcement learning rather than relying on outcome-only rewards.
 
 \section{Reinforcement Learning under POMDP}
 Agent Lightning presents a general framework for training AI agents using reinforcement learning under a Partially Observable Markov Decision Process (POMDP) formulation\cite{luo2025agentlightningtrainai}. The work emphasizes modular reward design, long-horizon optimization, and scalability across tasks.
 
-This perspective directly informs the theoretical framing of our work. By treating reasoning as a sequential decision process with partial observability, Agent Lightning provides a conceptual foundation for our quiz–exam reward structure and chunk-level saliency analysis. Our work can be viewed as a specialization of this agent-centric view, where the environment is a reasoning task and rewards are derived from intermediate quizzes and final answer evaluation.
+This perspective directly informs the theoretical framing of our work. By treating reasoning as a sequential decision process with partial observability, Agent Lightning provides a conceptual foundation for our quiz–exam reward structure and chunk-level saliency analysis. Our work can be viewed as a specialization of this agent-centric view, where the environment is a reasoning task and rewards are derived from intermediate quizzes and final answer evaluation. 
+
+\section{Credit Assignment in Reinforcement Learning}
+More recently, several works have explored credit assignment mechanisms specifically designed for reinforcement learning in LLM reasoning. VinePPO~\cite{kazemnejad2025vinepporefiningcreditassignment} demonstrates that standard value networks in PPO perform poorly at distinguishing the contribution of individual reasoning steps, and proposes Monte Carlo-based advantage estimation as a more accurate alternative. PRIME~\cite{cui2025processreinforcementimplicitrewards} addresses a related challenge by enabling online process reward model updates using only outcome labels through implicit process rewards, avoiding the need for expensive step-level annotations while still providing dense token-level feedback during training. These approaches share with our work the recognition that trajectory-level credit assignment is insufficient for complex reasoning, though they differ in mechanism. VinePPO replaces the value network with Monte Carlo rollouts, while PRIME learns an implicit Q-function. In contrast, our approach estimates chunk-level saliency from quiz–exam feedback and directly reweights the completion mask in the GRPO loss, requiring no additional reward model or value network.
+
+% ============================================================
+% Section: Saliency and Interpretability in Neural Networks
+% ============================================================
+\section{Saliency and Interpretability in Neural Networks}
+
+The concept of saliency as used in this thesis draws on a long line of work in neural network interpretability. Saliency maps were first introduced by Simonyan et al.~\cite{simonyan2014deepinsideconvolutionalnetworks} as gradient-based visualizations that highlight which input features most influence a model's prediction. Subsequent methods extended this idea through different attribution mechanisms. Integrated Gradients~\cite{sundararajan2017axiomaticattributiondeepnetworks} accumulates gradients along a path from a baseline input to the actual input, satisfying desirable properties such as sensitivity and implementation invariance. Grad-CAM~\cite{Selvaraju_2019} produces class-discriminative localization maps by weighting activation maps with gradient information, and has been widely adopted for visual explanation in convolutional networks.
+
+These methods share a common goal of identifying which parts of an input are most responsible for a model's output. However, they typically operate at the level of individual inputs and gradients, focusing on pixel-level or token-level attribution within a single forward pass. 
+In contrast, the saliency analysis in this thesis operates at the level of reasoning chunks and is estimated from repeated evaluation rollouts rather than gradient signals. Instead of attributing importance to individual input features, the method examines how intermediate reasoning quality correlates with final answer correctness. Despite the difference in mechanism, both perspectives reflect the same principle that complex model outputs are not uniformly influenced by all components.
 
 \section{Datasets and Data Augmentation}
 \subsection{Overview of MATH, MATH500, and GSM8K}
@@ -517,7 +558,8 @@ W' &= W + \Delta W, \\
 where $A \in \mathbb{R}^{d \times r}$ and $B \in \mathbb{R}^{r \times k}$ and rank $r$ denotes the low-rank dimension of the adaptation. In our experiments, we set the LoRA rank to $r=16$, the scaling factor to $\alpha=64$, and the dropout probability to $0.05$. This design allows the model to acquire task-specific reasoning behaviors during supervised fine-tuning while preserving the general knowledge encoded in the pretrained backbone.
 
 \section{Model Initialization and Supervised Fine-Tuning}
-We initialize our models Qwen2.5-7B\cite{qwen2025qwen25technicalreport} using supervised fine-tuning on MetaMathQA, a synthetic dataset containing step-by-step mathematical solutions.
+We initialize our model Qwen2.5-7B-Instruct\cite{qwen2025qwen25technicalreport}, a decoder-only Transformer~\cite{vaswani2023attentionneed}. 
+Following common instruction-tuning practice~\cite{LanguageModelsareUnsupervisedMultitaskLearners_2019,ouyang2022traininglanguagemodelsfollow}, we first apply supervised fine-tuning on MetaMathQA, a synthetic dataset containing step-by-step mathematical solutions.
 
 To improve training stability and hardware efficiency, we employ dynamic sequence padding with padding aligned to multiples of 8 and mask padded tokens using a label value of $-100$. We use a per-device batch size of 8 with gradient accumulation over 8 steps, resulting in an effective batch size of 64. The learning rate is set to $1 \times 10^{-4}$ with a warmup ratio of 0.05, and training is conducted for 3 epochs. All experiments are performed in \texttt{bfloat16} precision with gradient norm clipping at 1.0 to prevent instability.
 After SFT converges, the LoRA adapters are merged into the base model weights, yielding a single consolidated checkpoint. 
@@ -1135,9 +1177,7 @@ The \texttt{OnlineSaliencyGRPOTrainer} introduces two additional hyperparameters
 \paragraph{GRPO hyperparameters.}
 All core GRPO hyperparameters remain identical to the baseline
 configuration in Section~\ref{sec:rl-procedure}, with the following
-exception.  The number of epochs is increased from~1 to~2 to give the
-online saliency mechanism sufficient iterations to detect and reinforce
-weak chunks as the policy evolves.
+exception. 
 
 \paragraph{Implementation.}
 The trainer is implemented as a subclass of TRL's \texttt{GRPOTrainer}. The only change to the training loop is the replacement of the completion mask described in Section~\ref{sec:online-saliency-grpo}, 
@@ -1178,7 +1218,7 @@ Given $N$ problems with predictions $\widehat{y}_i$ and ground-truth answers $y_
 
 \subsection{Pass@\texorpdfstring{$k$}{k}}
 
-Pass@$k$ measures whether at least one correct answer appears among $k$ generated samples.
+Pass@$k$ measures whether at least one correct answer appears among $k$ generated samples~\cite{chen2021evaluatinglargelanguagemodels}.
 Following standard practice, it is estimated as
 \[
 \mathrm{Pass@}k
@@ -1191,7 +1231,7 @@ where $n$ is the total number of samples and $c$ the number of correct samples.
 \subsection{Consensus@\texorpdfstring{$64$}{64} (Con@64)}
 
 For each problem, 64 stochastic samples are generated and the final prediction
-is obtained by majority voting:
+is obtained by majority voting~\cite{wang2023selfconsistencyimproveschainthought}:
 \[
 \widehat{y}_i^{\mathrm{cons}}
 =
@@ -1201,6 +1241,52 @@ is obtained by majority voting:
 \]
 Consensus@64 is the accuracy of these majority voted predictions.
 
+\subsection{Leave-One-Out Saliency Variability}
+\label{sec:loo-variability}
+
+The saliency analysis in this thesis (Section~\ref{sec:saliency_chunks}) estimates
+per-chunk saliency weights $\mathbf{w} = (w_1, \dots, w_J)$ from $K$ repeated
+evaluation runs.  Because $K$ is small (we use $K = 5$), it is
+important to verify that the resulting estimates are not dominated by
+sampling noise from any single run. 
+
+For a given problem with $K$ runs, we construct $K$ leave-one-out subsets~\cite{Arlot_2010}
+by dropping each run $k \in \{1, \dots, K\}$ in turn.  On each subset, the
+saliency weight vector is recomputed from the remaining $K - 1$ runs using
+the same exam-weighted formula (Equation~\ref{eq:exam-weighted-saliency-formula}).
+Let $\mathbf{w}^{(-k)}$ denote the weight vector obtained after dropping
+run~$k$.  The LOO variability for chunk~$j$ is defined as the standard
+deviation of its weight across the $K$ leave-one-out replicates:
+\begin{equation}
+  \mathrm{LOO\text{-}var}_j
+  \;=\;
+  \sqrt{
+    \frac{1}{|\mathcal{K}^*|}
+    \sum_{k \in \mathcal{K}^*}
+    \bigl(w_j^{(-k)} - \bar{w}_j\bigr)^2
+  },
+  \qquad
+  \bar{w}_j = \frac{1}{|\mathcal{K}^*|}\sum_{k \in \mathcal{K}^*} w_j^{(-k)},
+  \label{eq:loo-stability}
+\end{equation}
+where $\mathcal{K}^* \subseteq \{1, \dots, K\}$ is the set of leave-one-out
+subsets that produce non-degenerate saliency (i.e., at least two correct
+exam runs remain after dropping run~$k$).  Subsets that become degenerate
+are excluded because their uniform fallback weights do not carry diagnostic information.
+
+The LOO variability per-problem is then summarized as the mean across chunks,
+$\overline{\mathrm{LOO\text{-}var}} = \frac{1}{J}\sum_{j=1}^{J} \mathrm{LOO\text{-}var}_j$.
+Lower values indicate that the saliency estimate is robust to the removal
+of any single run, while higher values signal that the weight distribution
+is sensitive to individual evaluation outcomes.
+
+% This metric serves two purposes in the experimental analysis.
+% First, in Section~\ref{sec:saliency-protocol} it validates that $K = 5$ runs
+% produce sufficiently stable saliency estimates for pattern classification.
+% Second, in the comparative analysis of SaliencyGRPO
+% (Section~\ref{sec:entropy_LOO_compare}), changes in LOO variability between models
+% reveal whether the token reweighting mechanism produces more consistent
+% chunk-level reasoning structure across repeated evaluations.
 
 \subsection{Benchmark Evaluation Protocols}
 \label{sec:eval_protocols}
@@ -1221,7 +1307,7 @@ The prompting, extraction, and three stage equivalence check are identical to MA
 AIME answers are integers in $[0, 999]$. The extractor first tries \texttt{\textbackslash boxed\{\dots\}}, then an \texttt{Answer:} pattern, and finally falls back to the last integer in the response. Numeric comparison is used so that leading zeros do not affect correctness. The generation budget is set to 2{,}048 tokens to accommodate longer reasoning chains. Con@64 with majority vote is enabled only for this benchmark.
 
 \paragraph{Generation Setup.}
-Pass@1 uses greedy decoding. For Pass@$k$ with $k > 1$, one greedy response is combined with $k - 1$ sampled responses at temperature $T = 0.7$ and top-$p = 0.9$. All runs use a fixed seed of 42.
+Pass@1 uses greedy decoding. For Pass@$k$ with $k > 1$, one greedy response is combined with $k - 1$ sampled responses at temperature $T = 0.7$ and top-$p = 0.9$. 
 
 
 % Results Discuss
@@ -1435,10 +1521,10 @@ The exam-weighted saliency is computed as in Equation~\ref{eq:exam-weighted-sali
     w_j = \frac{\max(0,\,s_j)}{\sum_{i=1}^{J}\max(0,\,s_i)}.
 \]
 When the denominator equals zero (i.e., all exam runs are incorrect), the
-saliency distribution is \emph{degenerate} and uninformative; these items are
+saliency distribution is \emph{degenerate} and uninformative. These items are
 flagged and excluded from pattern classification.
 
-To classify saliency patterns, we use normalized Shannon entropy:
+To classify saliency patterns, we use normalized Shannon entropy~\cite{shannon1948mathematical}:
 \[
     \hat{H}(\mathbf{w})
     = \frac{H(\mathbf{w})}{H_{\max}}
@@ -1449,8 +1535,8 @@ A value of $\hat{H} = 1$ corresponds to perfect uniformity
 ($w_j = 1/J$ for all $j$), while $\hat{H} = 0$ indicates that the
 entire saliency mass is concentrated on a single chunk.
 Normalized entropy is preferred over raw variance because it provides a
-scale-invariant measure that allows consistent thresholding regardless of
-the number of chunks $J$.
+measure that is independent of the scale of $J$, allowing consistent
+thresholding regardless of the number of chunks.
 
 Problems are classified into four saliency patterns using the following
 criteria:
@@ -1464,13 +1550,20 @@ criteria:
           the dominant chunk index $\arg\max_j\, Q_{k,j}\,E_k$ differs
           across at least two of the $K$ runs.
 \end{enumerate}
-
+\bigskip
 To verify that $K = 5$ runs are sufficient for stable saliency estimates,
-we compute leave-one-out stability. For each item, we recalculate
-$\mathbf{w}$ while dropping each run $k$ in turn, and report the standard
-deviation of the resulting $w_j$ values across the $K$ leave-one-out folds.
-The mean leave-one-out stability is 0.006 (std = 0.014) for GSM8K and 0.016 (std = 0.032) for MATH, confirming
-that $K=5$ repetitions produce stable saliency estimates. 
+we compute the leave-one-out saliency variability defined in
+Section~\ref{sec:loo-variability}. For each problem, the saliency weights
+$\mathbf{w}$ are recomputed $K$ times, each time dropping one run and
+re-estimating the weights using the remaining $K-1$ runs according to
+Equation~\ref{eq:exam-weighted-saliency-formula}. The variability of the
+resulting weights across these leave-one-out folds is then quantified
+using the LOO standard deviation defined in
+Equation~\ref{eq:loo-stability}. This diagnostic quantifies the sensitivity of the estimated saliency distribution to the removal of any single evaluation run.
+
+The mean leave-one-out variability is 0.006 (std = 0.014) for GSM8K and
+0.016 (std = 0.032) for MATH, confirming that $K = 5$ repetitions produce
+stable saliency estimates.
 
 % ────────────────────────────────────────────────────────────
 \subsubsection{Aggregate Saliency Statistics}
@@ -1586,17 +1679,6 @@ and exam outcomes across all individual runs on both benchmarks,
 covering $480 \times 5 = 2{,}400$ runs for GSM8K and
 $370 \times 5 = 1{,}850$ runs for MATH.
 
-
-\paragraph{Contingency analysis.}
-Table~\ref{tab:quiz-exam-contingency-gsm8k-math} presents the $2 \times 2$
-contingency tables for both datasets. On GSM8K, when all quizzes pass,
-the exam failure rate is only 1.63\%, but it increases to 17.44\% when
-any quiz fails, a \textbf{10.7$\times$} rise. On MATH, the failure rate
-increases from 10.4\% to 26.1\% (approximately \textbf{2.5$\times$}).
-These results indicate that quiz failures are predictive of exam
-failures on both benchmarks, although the coupling is substantially
-stronger on GSM8K than on the harder MATH dataset.
-
 \begin{table}[t]
 \centering
 \caption{Contingency table for quiz and exam outcomes. Quiz failure is a strong predictor of exam failure.}
@@ -1616,24 +1698,22 @@ stronger on GSM8K than on the harder MATH dataset.
 \end{tabular}
 \end{table}
 
-\paragraph{Scaling effect of quiz failures.}
-Beyond the binary distinction, Table~\ref{tab:dose-response-gsm8k-math} and
-Figure~\ref{fig:scaling-effect-line-chart-gsm8k-math} show that the probability of exam failure 
-increases monotonically with the number of quiz failures in a
-single run, showing a clear upward trend.
-The growth suggests that quiz failures are not
-independent. A run in which multiple intermediate steps fail is more
-likely to produce an incorrect final answer.
-This validates the design of the quiz reward in Section~\ref{sec:quiz-reward} as a
-meaningful intermediate supervision signal that quiz performance provides
-dense and graded feedback that strongly correlates with final answer
-correctness.
+\paragraph{Contingency analysis.}
+Table~\ref{tab:quiz-exam-contingency-gsm8k-math} presents the $2 \times 2$
+contingency tables for both datasets. On GSM8K, when all quizzes pass,
+the exam failure rate is only 1.63\%, but it increases to 17.44\% when
+any quiz fails, a \textbf{10.7$\times$} rise. On MATH, the failure rate
+increases from 10.4\% to 26.1\% (approximately \textbf{2.5$\times$}).
+These results indicate that quiz failures are predictive of exam
+failures on both benchmarks, although the coupling is substantially
+stronger on GSM8K than on the harder MATH dataset.
+
 
 \begin{table}[t]
 \centering
 \caption{Exam failure probability by number of quiz failures per run. Results are reported for GSM8K and MATH under the same $K=5$ evaluation protocol.}
 \label{tab:dose-response-gsm8k-math}
-\begin{tabular}{llcccc}
+\begin{tabular}{lcrrr}
 \toprule
 \textbf{Dataset} & \textbf{\# Quiz failures} & \textbf{Exam pass} & \textbf{Exam fail}
     & \textbf{$P(\text{exam fail})$} \\
@@ -1660,7 +1740,18 @@ correctness.
 \label{fig:scaling-effect-line-chart-gsm8k-math}
 \end{figure}
 
-
+\paragraph{Scaling effect of quiz failures.}
+Beyond the binary distinction, Table~\ref{tab:dose-response-gsm8k-math} and
+Figure~\ref{fig:scaling-effect-line-chart-gsm8k-math} show that the probability of exam failure 
+increases monotonically with the number of quiz failures in a
+single run, showing a clear upward trend.
+The growth suggests that quiz failures are not
+independent. A run in which multiple intermediate steps fail is more
+likely to produce an incorrect final answer.
+This validates the design of the quiz reward in Section~\ref{sec:quiz-reward} as a
+meaningful intermediate supervision signal that quiz performance provides
+dense and graded feedback that strongly correlates with final answer
+correctness.
 
 % ────────────────────────────────────────────────────────────
 \subsubsection{Positional Analysis of Quiz Failures and Weak Chunks}
@@ -1724,7 +1815,7 @@ of weak chunks (i.e., chunks with $w_j \le 0.10$).
 
 \end{table}
 
-\begin{figure}[tbp]
+\begin{figure}[H]
 \centering
 
 \begin{subfigure}[t]{0.475\textwidth}
@@ -1818,13 +1909,13 @@ of weak chunks (i.e., chunks with $w_j \le 0.10$).
 \end{figure}
 
 The positional analysis reveals distinct patterns across the two
-benchmarks. On GSM8K, both quiz failures and weak chunks show a clear gradient, with higher failure rates toward the final chunk. 
+benchmarks (Figure~\ref{fig:positional-analysis-gsm8k-math}). On GSM8K, both quiz failures and weak chunks show a clear gradient, with higher failure rates toward the final chunk. 
 This pattern is consistent with error accumulation in sequential reasoning, where mistakes in earlier steps propagate and turn into failures during final integration.
 
 In contrast, MATH does not show a monotonic positional gradient.
-Quiz failure rates remain uniformly high across all positions, and weak
+Quiz failure rates remain uniformly high across all positions (Figure~\ref{fig:positional-analysis-gsm8k-math}a), and weak
 chunks are distributed symmetrically between the first and last
-positions. This suggests that on harder problems, failures are not
+positions (Figure~\ref{fig:positional-analysis-gsm8k-math}b). This suggests that on harder problems, failures are not
 confined to late chunk integration but can arise both from early problem
 formulation and from final computation steps.
 
@@ -2047,9 +2138,9 @@ with especially large variance in the low-correct-rate regime.}
 
 On GSM8K, problems in the medium correct-rate range (0.4--0.79)
 show substantially higher saliency variance than perfectly solved
-problems (0.037 vs.\ 0.010). This indicates that saliency analysis is
+problems (0.037 vs.\ 0.01). This indicates that saliency analysis is
 most informative at intermediate difficulty levels, where the model
-occasionally fails and chunk-level credit assignment helps identify
+occasionally fails, and chunk-level credit assignment helps identify
 which reasoning steps drive the inconsistency. For perfectly solved
 problems, saliency remains largely uniform and therefore less diagnostic.
 
@@ -2137,7 +2228,7 @@ these diagnostic signals into concrete improvements.  We compare the standard GR
 (\textsc{Qwen2.5-7B-Instruct-GRPO}) against the saliency augmented variant
 (\textsc{Qwen2.5-7B-Instruct-SaliencyGRPO}), both trained on the same 5{,}000 problems
 Data~A dataset with identical hyperparameters except for the two saliency specific parameters
-($\alpha=1.5$, $\delta=0.1$) and an extended training duration of two epochs (Section~\ref{sec:exp-saliency-grpo}).
+($\alpha=1.5$, $\delta=0.1$) as described in Section~\ref{sec:exp-saliency-grpo}.
 
 To isolate the effect of saliency guided reweighting at the chunk level, we re-run the same saliency evaluation protocol used in Section~\ref{sec:saliency_chunks}, and evaluate each problem $K=5$ times. The saliency weights ${w_j}$ and pattern classifications are computed using the same procedure as before.
 
@@ -2459,16 +2550,17 @@ across chunk positions, suggesting that the mechanism operates primarily by stre
 model's ability to generate higher-quality complete trajectories rather than by surgically repairing
 specific positional bottlenecks.
 
-\subsubsection{Entropy and Stability}
+\subsubsection{Entropy and LOO Variability}
+\label{sec:entropy_LOO_compare}
 
 \begin{table}[t]
 \centering
-\caption{Saliency entropy and stability statistics.  Lower entropy indicates more concentrated
-(non-uniform) saliency distributions; lower LOO-std indicates more stable saliency estimates.}
+\caption{Saliency entropy and variability statistics. Lower entropy indicates stronger differentiation in saliency weights across reasoning chunks.
+Lower LOO variability indicates more stable saliency estimates across evaluation subsets.}
 \label{tab:entropy-stability}
 \begin{tabular}{llcccc}
 \toprule
-& & \multicolumn{2}{c}{\textbf{Entropy $\hat{H}$}} & \multicolumn{2}{c}{\textbf{LOO Stability}} \\
+& & \multicolumn{2}{c}{\textbf{Entropy $\hat{H}$}} & \multicolumn{2}{c}{\textbf{LOO Variability}} \\
 \cmidrule(lr){3-4} \cmidrule(lr){5-6}
 \textbf{Dataset} & \textbf{Model} & \textbf{Mean} & \textbf{Std} & \textbf{Mean} & \textbf{Std} \\
 \midrule
@@ -2483,13 +2575,16 @@ specific positional bottlenecks.
 \end{tabular}
 \end{table}
 
-SaliencyGRPO produces slightly lower mean entropy on both benchmarks (0.939~$\to$~0.917 on
-GSM8K and 0.780~$\to$~0.739 on MATH), consistent with the increased non-uniform fraction observed in the pattern analysis. 
-At the same time, leave-one-out stability improves on both datasets.
-LOO-std decreases from 0.00578 to 0.00521 on GSM8K (a 9.9\% reduction)
-and from 0.01600 to 0.01227 on MATH (a 23.3\% reduction).
-This combination of lower entropy and higher stability means that the saliency signals from SaliencyGRPO are more focused and more consistent across repeated runs. 
-In other words, when we observe chunk-level differences under SaliencyGRPO, those differences are more likely to reflect real changes in reasoning structure rather than random variation.
+Table~\ref{tab:entropy-stability} reports two complementary diagnostics that characterize the structure and reliability of the saliency distribution.
+
+Normalized entropy $\hat{H}$ measures how saliency mass is distributed across reasoning chunks. Lower entropy indicates that saliency is concentrated on a smaller subset of chunks rather than spread uniformly, suggesting stronger differences in chunk-level contributions. However, entropy alone does not indicate whether this structure is reproducible across runs.
+
+To evaluate robustness, we report the leave-one-out variability defined in Section~\ref{sec:loo-variability} (Equation~\ref{eq:loo-stability}). This metric measures how much the estimated saliency weights $\mathbf{w}$ change when any single evaluation run is removed. Lower values indicate that the saliency estimates are stable across different subsets of runs and therefore less sensitive to individual rollouts.
+
+SaliencyGRPO shows slightly lower entropy on both benchmarks, decreasing from 0.939 to 0.917 on GSM8K and from 0.780 to 0.739 on MATH. At the same time, LOO variability decreases from 0.00578 to 0.00521 on GSM8K (9.9\% reduction) and from 0.01600 to 0.01227 on MATH (23.3\% reduction).
+
+The improvement in both metrics suggests that the saliency distributions under SaliencyGRPO become both more concentrated and more stable across runs. Lower entropy means that quiz-based diagnostics reveal clearer differentiation among reasoning chunks, which in turn allows the token-level reweighting mechanism to allocate meaningfully different gradient contributions across chunks rather than applying a nearly uniform mask. Combined with the reduction in LOO variability, this indicates that the observed differences in saliency weights across chunks more likely reflect consistent reasoning structure rather than sampling noise.
+
 
 
 \subsubsection{Summary and Interpretation}
@@ -2507,7 +2602,7 @@ The improvement-to-degradation ratio of 3:1 across all MATH items
 indicates that the reweighting mechanism provides a net positive training signal.
 
 \item \textbf{Improved saliency stability.}  
-Leave-one-out stability improves by 23.3\% on MATH,
+Leave-one-out variability improves by 23.3\% on MATH,
 indicating that the model's chunk-level reasoning structure becomes more consistent across repeated evaluations, 
 even as saliency distributions become more differentiated.
 
