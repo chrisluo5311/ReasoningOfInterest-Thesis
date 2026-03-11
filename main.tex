@@ -112,7 +112,7 @@
 
 
 \begin{flushright}
-    Date: March 4, 2026
+    Date: March 10, 2026
 \end{flushright}
 
 {\centering
@@ -940,7 +940,7 @@ token in a weak chunk ($\tilde{\omega}_{i,t} = \alpha$) contributes
   \frac{1}{L},
   \label{eq:reweighted-fraction}
 \end{equation}
-where ${|\mathcal{T}_w|}$ is the number of tokens in weak chunks.
+where L is the total number of tokens in the completion and ${|\mathcal{T}_w|}$ is the number of tokens in weak chunks.
 Correspondingly, tokens outside weak chunks see their relative weight
 decrease. The effect is that gradient updates prioritize improving predictions on reasoning segments identified as fragile, while allocating relatively less emphasis to segments that are already reliable.
 
@@ -954,7 +954,8 @@ and maintains compatibility with future TRL updates.
 
 \chapter{Experiments and Results}
 
-This chapter presents the experimental setup and evaluation methodology used to assess the effectiveness of the proposed step-level reinforcement learning framework. We describe the datasets preprocessing, model configurations, training procedure, and evaluation metrics, followed by an analysis of experimental outcomes. Where final numerical results are not yet fixed, we report observations that are directly supported by logged training runs and clearly indicate where results remain under consolidation.
+This chapter presents the experimental setup and evaluation methodology used to assess the effectiveness of the proposed framework. 
+We describe the data preparation, model configurations, training procedure, and evaluation metrics, followed by a detailed analysis of experimental results across all model configurations.
 
 \section{Experimental Setup}
 
@@ -1171,13 +1172,10 @@ the training set is a candidate for token reweighting whenever its
 online saliency reveals a fragile reasoning segment.
 
 \paragraph{Saliency hyperparameters.}
-The \texttt{OnlineSaliencyGRPOTrainer} introduces two additional hyperparameters beyond the standard GRPO configuration, the weak-chunk amplification factor $\alpha = 1.5$ and the saliency threshold $\delta = 0.1$. A chunk~$j$ is classified as weak whenever its online saliency weight satisfies $w_j < \delta$, and tokens belonging to such chunks receive a completion-mask weight of $\alpha$ instead of $1$ in the loss computation, as described in Section~\ref{sec:online-saliency-grpo}.
+The \texttt{OnlineSaliencyGRPOTrainer} introduces two additional hyperparameters beyond the standard GRPO configuration, the weak-chunk amplification factor $\alpha = 1.5$, $\alpha = 2$ and the saliency threshold $\delta = 0.1$. 
+A chunk~$j$ is classified as weak whenever its online saliency weight satisfies $w_j < \delta$, and tokens belonging to such chunks receive a completion-mask weight of $\alpha$  in the loss computation, as described in Section~\ref{sec:online-saliency-grpo}.
 
 
-\paragraph{GRPO hyperparameters.}
-All core GRPO hyperparameters remain identical to the baseline
-configuration in Section~\ref{sec:rl-procedure}, with the following
-exception. 
 
 \paragraph{Implementation.}
 The trainer is implemented as a subclass of TRL's \texttt{GRPOTrainer}. The only change to the training loop is the replacement of the completion mask described in Section~\ref{sec:online-saliency-grpo}, 
@@ -1189,9 +1187,8 @@ Online saliency is computed within the reward function by aggregating per-chunk 
 To isolate the effect of the token reweighting mechanism, we initialize
 the saliency-guided run from the same backbone Qwen2.5-7B-Instruct
 used for the GRPO experiments and train on the identical
-5{,}000-problem dataset.  The only differences are the two
-saliency specific hyperparameters ($\alpha$, $\delta$), the increased
-epoch count, and the online saliency logic itself.
+5{,}000 problem dataset.  The only differences are the two
+saliency specific hyperparameters ($\alpha$, $\delta$), the number of generation ($K$), and the online saliency logic itself.
 This ensures that any observed performance change can be attributed to
 the token reweighting mechanism rather than differences in data
 composition or optimization schedule.
@@ -1244,7 +1241,7 @@ Consensus@64 is the accuracy of these majority voted predictions.
 \subsection{Leave-One-Out Saliency Variability}
 \label{sec:loo-variability}
 
-The saliency analysis in this thesis (Section~\ref{sec:saliency_chunks}) estimates
+The saliency analysis (Section~\ref{sec:saliency_chunks}) estimates
 per-chunk saliency weights $\mathbf{w} = (w_1, \dots, w_J)$ from $K$ repeated
 evaluation runs.  Because $K$ is small (we use $K = 5$), it is
 important to verify that the resulting estimates are not dominated by
@@ -1274,11 +1271,10 @@ subsets that produce non-degenerate saliency (i.e., at least two correct
 exam runs remain after dropping run~$k$).  Subsets that become degenerate
 are excluded because their uniform fallback weights do not carry diagnostic information.
 
-The LOO variability per-problem is then summarized as the mean across chunks,
+The LOO variability per-problem is summarized as the mean across chunks,
 $\overline{\mathrm{LOO\text{-}var}} = \frac{1}{J}\sum_{j=1}^{J} \mathrm{LOO\text{-}var}_j$.
-Lower values indicate that the saliency estimate is robust to the removal
-of any single run, while higher values signal that the weight distribution
-is sensitive to individual evaluation outcomes.
+Lower values indicate robust saliency estimates, while higher values
+reflect greater sensitivity to individual runs.
 
 % This metric serves two purposes in the experimental analysis.
 % First, in Section~\ref{sec:saliency-protocol} it validates that $K = 5$ runs
@@ -1306,8 +1302,8 @@ The prompting, extraction, and three stage equivalence check are identical to MA
 \paragraph{AIME 2024.}
 AIME answers are integers in $[0, 999]$. The extractor first tries \texttt{\textbackslash boxed\{\dots\}}, then an \texttt{Answer:} pattern, and finally falls back to the last integer in the response. Numeric comparison is used so that leading zeros do not affect correctness. The generation budget is set to 2{,}048 tokens to accommodate longer reasoning chains. Con@64 with majority vote is enabled only for this benchmark.
 
-\paragraph{Generation Setup.}
-Pass@1 uses greedy decoding. For Pass@$k$ with $k > 1$, one greedy response is combined with $k - 1$ sampled responses at temperature $T = 0.7$ and top-$p = 0.9$. 
+% \paragraph{Generation Setup.}
+% Pass@1 uses greedy decoding. For Pass@$k$ with $k > 1$, one greedy response is combined with $k - 1$ sampled responses at temperature $T = 0.7$ and top $p = 0.9$. 
 
 
 % Results Discuss
@@ -1369,8 +1365,11 @@ Qwen2.5-7B-Instruct-GRPO (w/o Quiz, Step)
 Qwen2.5-7B-Instruct-GRPO
 & 91.0 & 76.8 & 70.4 & 13.3 & 13.3 \\
 
-Qwen2.5-7B-Instruct-SaliencyGRPO
-& \textbf{94.5} & \textbf{80.0} & \textbf{71.6} & \textbf{23.3} & \textbf{16.7} \\
+Qwen2.5-7B-Instruct-SaliencyGRPO ($\alpha$=2) 
+& 93.5 & \textbf{81.6} & 71.4 & 20.0 & 16.7 \\
+
+Qwen2.5-7B-Instruct-SaliencyGRPO ($\alpha$=1.5)
+& \textbf{94.5} & 80.0 & \textbf{71.6} & \textbf{23.3} & \textbf{16.7} \\
 
 \midrule
 \multicolumn{6}{@{}l}{\textit{GRPO Training Data~B: GSM8K + MATH + AIME (3{,}438 problems, GPT-5.2 quizzes, difficulty-scaled)}} \\[3pt]
@@ -1735,7 +1734,7 @@ stronger on GSM8K than on the harder MATH dataset.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.77\textwidth]{Image/scaling_effect_gsm8k_math.png}
+\includegraphics[width=0.655\textwidth]{Image/scaling_effect_gsm8k_math.png}
 \caption{Exam failure probability increases with the number of quiz failures per run under K=5 evaluation on both GSM8K and MATH.}
 \label{fig:scaling-effect-line-chart-gsm8k-math}
 \end{figure}
@@ -1763,6 +1762,10 @@ most likely to occur.  Table~\ref{tab:quiz-fail-position-gsm8k-math} reports
 quiz failure rates by chunk position across all valid runs, and
 Table~\ref{tab:weak-chunk-position-gsm8k-math} reports the position distribution
 of weak chunks (i.e., chunks with $w_j \le 0.10$).
+
+The positional analysis reveals distinct patterns across the two
+benchmarks (Figure~\ref{fig:positional-analysis-gsm8k-math}). On GSM8K, both quiz failures and weak chunks show a clear gradient, with higher failure rates toward the final chunk. 
+This pattern is consistent with error accumulation in sequential reasoning, where mistakes in earlier steps propagate and turn into failures during final integration.
 
 \begin{table}[t]
 \centering
@@ -1908,9 +1911,6 @@ of weak chunks (i.e., chunks with $w_j \le 0.10$).
 \label{fig:positional-analysis-gsm8k-math}
 \end{figure}
 
-The positional analysis reveals distinct patterns across the two
-benchmarks (Figure~\ref{fig:positional-analysis-gsm8k-math}). On GSM8K, both quiz failures and weak chunks show a clear gradient, with higher failure rates toward the final chunk. 
-This pattern is consistent with error accumulation in sequential reasoning, where mistakes in earlier steps propagate and turn into failures during final integration.
 
 In contrast, MATH does not show a monotonic positional gradient.
 Quiz failure rates remain uniformly high across all positions (Figure~\ref{fig:positional-analysis-gsm8k-math}a), and weak
@@ -1919,7 +1919,6 @@ positions (Figure~\ref{fig:positional-analysis-gsm8k-math}b). This suggests that
 confined to late chunk integration but can arise both from early problem
 formulation and from final computation steps.
 
-
 % ────────────────────────────────────────────────────────────
 \subsubsection{Saliency Patterns}
 \label{sec:qualitative-patterns}
@@ -1927,19 +1926,39 @@ formulation and from final computation steps.
 
 To complement the aggregate statistics, we present representative
 examples that illustrate the four saliency patterns identified by the
-classification framework. Since the observed saliency patterns are
-qualitatively similar across GSM8K and MATH, we use GSM8K examples
-for illustration in this section for brevity.
+classification framework. Since the observed saliency patterns are similar across GSM8K and MATH, we use GSM8K examples
+for illustration in this section.
 
-\begin{figure}[H]
+\begin{figure}[t]
   \centering
   \includegraphics[width=0.55\textwidth]{Image/gsm8k_94.png}
   \caption{Uniform chunk-level saliency for GSM8K-94.}
   \label{fig:saliency_uniform}
 \end{figure}
 
+% \begin{figure}[t]
+%   \centering
+
+%   \begin{subfigure}[t]{0.48\textwidth}
+%     \centering
+%     \includegraphics[width=\textwidth]{Image/gsm8k_94.png}
+%     \caption{Uniform saliency for GSM8K-94.}
+%     \label{fig:saliency_uniform}
+%   \end{subfigure}
+%   \hfill
+%   \begin{subfigure}[t]{0.48\textwidth}
+%     \centering
+%     \includegraphics[width=\textwidth]{Image/gsm8k_162.png}
+%     \caption{Single dominant saliency for GSM8K-162.}
+%     \label{fig:saliency_single_dominant}
+%   \end{subfigure}
+
+%   \caption{Uniform and Single dominant saliency patterns on GSM8K.}
+%   \label{fig:saliency_patterns_gsm8k}
+% \end{figure}
+
 \paragraph{Uniform Saliency Distributions.}
-Across the GSM8K training set, we observe that the majority of examples exhibit near-uniform saliency distributions, typically close to $\{0.33, 0.33, 0.33\}$ for three reasoning chunks. 
+Across the GSM8K training set, we observe that the majority of examples exhibit near-uniform saliency distributions, typically close to $\{0.33, 0.33, 0.33\}$ for three reasoning chunks as shown in Figure~\ref{fig:saliency_uniform}. 
 This pattern is common in relatively short GSM8K problems, where reasoning steps are tightly coupled and errors tend to propagate uniformly to the final answer.
 Uniform saliency suggests that no particular single reasoning chunk is more important or more problematic than the others. In these cases, improving performance likely requires rolling out more response samples rather than focusing on a specific intermediate step. 
 
@@ -1948,28 +1967,27 @@ In contrast to the dominant uniform case, a subset of examples exhibits non-unif
 Such patterns point to particular steps that have a stronger impact on the final outcome, revealing weaknesses or key operations that outcome-only supervision cannot capture.
 We summarize the most common non-uniform patterns below.
 
-\paragraph{Single Dominant Chunk.}
-\begin{figure}[H]
+\begin{figure}[t]
   \centering
   \includegraphics[width=0.55\textwidth]{Image/gsm8k_162.png}
   \caption{Single dominant chunk-level saliency for GSM8K-162.}
   \label{fig:saliency_single_dominant}
 \end{figure}
 
-This distribution indicates that the final exam outcome is almost entirely determined by one intermediate segment, while the remaining chunks contribute negligibly.
-
+\paragraph{Single Dominant Chunk.}
+In Figure~\ref{fig:saliency_single_dominant}, this distribution indicates that the final exam outcome is almost entirely determined by one intermediate segment, while the remaining chunks contribute negligibly.
 Such cases typically arise when a single critical calculation determines the success. 
 Once this step is correct, subsequent
-reasoning has little influence on the final answer. In contrast, an
-error at this step almost guaranties failure regardless of later steps.
+reasoning has little influence on the final answer. 
+
+In contrast, an error at this step almost guaranties failure regardless of later steps.
 In addition, single-dominant items show the lowest mean correct rate
 (0.813) among all patterns, indicating that concentrated on a single reasoning step is associated with unreliable
 performance. Among the 15 single-dominant items, 9 (60\%) have the
 dominant chunk at the last position, suggesting that the final stage
 computation is the critical bottleneck for these problems.
 
-\paragraph{Weak Intermediate Chunk.}
-\begin{figure}[H]
+\begin{figure}[t]
   \centering
   \begin{subfigure}{0.48\textwidth}
     \centering
@@ -1986,7 +2004,8 @@ computation is the critical bottleneck for these problems.
   \label{fig:saliency_weak_mid}
 \end{figure}
 
-In these cases, the model has difficulty with an intermediate reasoning step.
+\paragraph{Weak Intermediate Chunk.}
+In Figure~\ref{fig:saliency_weak_mid}, the model has difficulty with an intermediate reasoning step.
 This weakness does not always lead to a wrong final answer, since later steps may sometimes compensate for earlier mistakes.
 As a result, such issues are often hidden when the evaluation considers
 only the final answer, even though the underlying reasoning is
@@ -1995,8 +2014,7 @@ unstable.  Among the 49 weak chunk items, 36 (73.5\%) have $w_j = 0.0$
 that the weak chunk \emph{never} successfully correlated with exam
 success in any of the $K$ runs.
 
-\paragraph{Shifted Dominance across Chunks.}
-\begin{figure}[H]
+\begin{figure}[t]
   \centering
   \begin{subfigure}{0.48\textwidth}
     \centering
@@ -2013,7 +2031,8 @@ success in any of the $K$ runs.
   \label{fig:saliency_shifted_dominance}
 \end{figure}
 
-In this case, the responsibility for exam success alternates between
+\paragraph{Shifted Dominance across Chunks.}
+As shown in Figure~\ref{fig:saliency_shifted_dominance}, the responsibility for exam success alternates between
 different reasoning chunks across repeated runs. Rather than revealing
 one clearly weak step, shifted dominance shows that performance depends
 on the combination of several reasoning segments. This pattern was
@@ -2136,7 +2155,7 @@ with especially large variance in the low-correct-rate regime.}
 \label{fig:variance-by-correctrate-gsm8k-math}
 \end{figure}
 
-On GSM8K, problems in the medium correct-rate range (0.4--0.79)
+On GSM8K, problems in the medium correct rate range (0.4--0.79)
 show substantially higher saliency variance than perfectly solved
 problems (0.037 vs.\ 0.01). This indicates that saliency analysis is
 most informative at intermediate difficulty levels, where the model
@@ -2585,7 +2604,145 @@ SaliencyGRPO shows slightly lower entropy on both benchmarks, decreasing from 0.
 
 The improvement in both metrics suggests that the saliency distributions under SaliencyGRPO become both more concentrated and more stable across runs. Lower entropy means that quiz-based diagnostics reveal clearer differentiation among reasoning chunks, which in turn allows the token-level reweighting mechanism to allocate meaningfully different gradient contributions across chunks rather than applying a nearly uniform mask. Combined with the reduction in LOO variability, this indicates that the observed differences in saliency weights across chunks more likely reflect consistent reasoning structure rather than sampling noise.
 
+% ── Alpha sensitivity ablation ──────────────────────────────────
+% ────────────────────────────────────────────────────────────────
 
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth,
+    height=6.2cm,
+    xtick={1.0, 1.5, 2.0},
+    xlabel={Amplification factor $\alpha$},
+    ylabel={Pass@1 (\%)},
+    xmin=0.8, xmax=2.2,
+    ymin=68, ymax=97,
+    grid=major,
+    grid style={dashed, gray!40},
+    every axis plot/.append style={thick, mark size=2.8pt},
+    tick label style={font=\small},
+    label style={font=\small},
+    title={\small (a) GSM8K, MATH, MATH500},
+    legend style={
+        at={(0.5,-0.28)},
+        anchor=north,
+        font=\scriptsize,
+        draw=none,
+        legend columns=3,
+        column sep=6pt,
+    },
+]
+
+% GSM8K  Pass@1
+\addplot[color=cbBlue, mark=*, solid]
+    coordinates {(1.0, 91.0) (1.5, 94.5) (2.0, 93.5)};
+\addlegendentry{GSM8K}
+
+% MATH  Pass@1
+\addplot[color=cbOrange, mark=square*, solid]
+    coordinates {(1.0, 76.8) (1.5, 80.0) (2.0, 81.6)};
+\addlegendentry{MATH}
+
+% MATH500  Pass@1
+\addplot[color=cbGreen, mark=triangle*, solid]
+    coordinates {(1.0, 70.4) (1.5, 71.6) (2.0, 71.4)};
+\addlegendentry{MATH500}
+
+\end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth,
+    height=6.2cm,
+    xtick={1.0, 1.5, 2.0},
+    xlabel={Amplification factor $\alpha$},
+    ylabel={Accuracy (\%)},
+    xmin=0.8, xmax=2.2,
+    ymin=8, ymax=28,
+    grid=major,
+    grid style={dashed, gray!40},
+    every axis plot/.append style={thick, mark size=2.8pt},
+    tick label style={font=\small},
+    label style={font=\small},
+    title={\small (b) AIME 2024},
+    legend style={
+        at={(0.5,-0.28)},
+        anchor=north,
+        font=\scriptsize,
+        draw=none,
+        legend columns=2,
+        column sep=6pt,
+    },
+]
+
+% AIME  Pass@5
+\addplot[color=cbPurple, mark=diamond*, solid]
+    coordinates {(1.0, 13.3) (1.5, 23.3) (2.0, 20.0)};
+\addlegendentry{Pass@5}
+
+% AIME  Con@64
+\addplot[color=cbRed, mark=pentagon*, dashed]
+    coordinates {(1.0, 13.3) (1.5, 16.7) (2.0, 16.7)};
+\addlegendentry{Con@64}
+
+\end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\caption{Effect of the amplification factor $\alpha$ on benchmark
+  accuracy.  $\alpha = 1.0$ corresponds to standard GRPO
+  (uniform completion mask).  (a)~On Pass@1 benchmarks, moving from
+  $\alpha = 1.0$ to $1.5$ yields consistent gains. Increasing $\alpha$ further to $2.0$ continues to improve MATH but slightly reduces GSM8K.
+  (b)~On AIME~2024, $\alpha = 1.5$ achieves the strongest Pass@5
+  while Con@64 remain unchanged beyond $\alpha = 1.5$.}
+\label{fig:alpha-ablation}
+\end{figure}
+
+\subsubsection{Sensitivity to the amplification factor $\alpha$.}
+
+The preceding analysis establishes that SaliencyGRPO produces more concentrated and stable saliency distributions than standard GRPO. 
+A separate question is how sensitive the method is to its primary hyperparameter, the amplification factor $\alpha$ that controls how strongly weak-chunk tokens are weighted during training.
+
+Standard GRPO applies a uniform completion mask, which is equivalent to
+setting $\alpha = 1.0$ in the SaliencyGRPO framework (i.e.\ all tokens
+receive identical weight regardless of chunk-level saliency).
+The results reported in Sections~\ref{sec:entropy_LOO_compare} use $\alpha = 1.5$.
+To examine the effect of the amplification factor, we additionally
+train a model with $\alpha = 2.0$, keeping all other hyperparameters
+identical, and compare the three configurations in Table~\ref{tab:grpo_three_models} and Figure~\ref{fig:alpha-ablation}.
+
+The transition from $\alpha = 1.0$ to $\alpha = 1.5$ yields consistent
+improvements on every benchmark. GSM8K rises from 91.0\% to 94.5\%
+($+3.5$~pp), MATH from 76.8\% to 80.0\% ($+3.2$~pp), MATH500
+from 70.4\% to 71.6\% ($+1.2$~pp), and AIME~Pass@5 from 13.3\% to
+23.3\% ($+10.0$~pp).  This uniform gain confirms that saliency guided
+token reweighting provides a consistent improvement over the
+standard GRPO objective.
+
+Increasing $\alpha$ further to $2.0$ produces a more nuanced outcome.
+MATH improves to 81.6\% ($+1.6$~pp over $\alpha = 1.5$), while GSM8K
+decreases to 93.5\% ($-1.0$~pp) and AIME~Pass@5 decreases to 20.0\%
+($-3.3$~pp).  MATH500 remains essentially unchanged at 71.4\%, while AIME~Con@64
+remains at 16.7\%.
+This pattern is consistent with the redistribution interpretation of the
+completion mask mechanism described in
+Section~\ref{sec:online-saliency-grpo}. A higher $\alpha$ allocates more gradient budget to tokens in weak reasoning chunks. 
+This improves problems where chunk-level weaknesses limit performance, especially the Level~3--5 items that constitute 60\% of the MATH evaluation set. 
+However, it slightly reduces the learning signal on already strong reasoning steps, which mainly influences simpler benchmarks.
+MATH500 and AIME~Con@64 show negligible differences between the two
+settings, indicating that these benchmarks are relatively insensitive
+to $\alpha$ in this range.
+
+Overall, SaliencyGRPO consistently outperforms standard GRPO across the
+tested range of $\alpha \in [1.0, 2.0]$, while showing only moderate
+sensitivity to the choice of $\alpha$. We select $\alpha = 1.5$ as the
+default configuration to run saliency analysis because it provides the most stable performance across benchmarks.
 
 \subsubsection{Summary and Interpretation}
 
@@ -2730,6 +2887,15 @@ The main contribution of this thesis is a saliency guided version of GRPO that a
 We analyze how different parts of a reasoning chain contribute to final answer correctness. By grouping reasoning into chunks and measuring their impact on overall performance, we observe that not all steps are equally important. Some segments consistently have strong influence on the final result, while others contribute less and appear more unstable.
 
 Based on this observation, we design Saliency GRPO to focus learning on the weaker reasoning segments. When a trajectory has positive advantage, we increase the optimization pressure on its weaker chunks instead of treating all steps uniformly. This allows the model to strengthen fragile parts of the reasoning process while preserving already stable components. Empirical results show that this selective update improves performance without disrupting existing strengths.
+
+\paragraph{Robustness to the amplification factor.}
+We further examine the sensitivity of SaliencyGRPO to its primary hyperparameter $\alpha$ by comparing models trained with $\alpha= 1.5$ and $\alpha= 2.0$ against the standard GRPO baseline ($\alpha= 1.0$). 
+Both configurations consistently outperform standard GRPO across all
+benchmarks while exhibiting a meaningful trade-off. $\alpha = 1.5$
+achieves the most balanced gains, whereas $\alpha = 2.0$ further
+improves the performance on medium problems at the cost of a slight
+reduction on simpler benchmarks.
+This moderate sensitivity suggests that the benefit of saliency guided reweighting does not depend on precise hyperparameter tuning and that the method is robust within a practical range.
 
 \paragraph{Extended Experiments with Difficulty Scaled Quizzes.}
 Beyond the saliency based training approach, we also run additional experiments that introduce intermediate quizzes with different densities depending on problem difficulty. These experiments are not the central contribution of the thesis, but they help illustrate an important pattern. Harder problems tend to benefit more from denser intermediate supervision, while easier problems do not require as many checkpoints.
